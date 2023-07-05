@@ -1,7 +1,8 @@
-// import * as THREE from 'three';
+import * as THREE from 'three';
 // import {Text} from 'troika-three-text'
-// import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { fromUrl  } from "geotiff";
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const CRS = 'EPSG:32632'
 const x = 580239
@@ -9,22 +10,6 @@ const y = 4917120
 const width = 120
 const height = 100
 const mPerPixel = 20
-
-// let myUrl = 'http://wms.pcn.minambiente.it/ogc?map=/ms_ogc/WMS_v1.3/raster/DTM_20M.map' + 
-//     '&SERVICE=WMS' +
-//     '&VERSION=1.3.0' + 
-//     '&REQUEST=GetMap' +
-//     '&BBOX=' + encodeURIComponent([(x - width / 2 * mPerPixel),(y - height / 2 * mPerPixel),(x + width / 2 * mPerPixel),(y + height / 2 * mPerPixel)].join(',')) +
-//     '&CRS=' + encodeURIComponent(CRS) +
-//     '&WIDTH=' + width +
-//     '&HEIGHT=' + height +
-//     '&LAYERS=EL.DTM.20M' +
-//     '&STYLES=' +
-//     '&FORMAT=image%2Fpng' +
-//     '&DPI=96' +
-//     '&MAP_RESOLUTION=96' +
-//     '&FORMAT_OPTIONS=dpi%3A96' +
-//     '&TRANSPARENT=TRUE'
 
 let WCSurl = 'https://tinitaly.pi.ingv.it/TINItaly_1_1/wcs?' +
     'SERVICE=WCS' +
@@ -38,56 +23,83 @@ let WCSurl = 'https://tinitaly.pi.ingv.it/TINItaly_1_1/wcs?' +
     '&WIDTH='+ width +
     '&HEIGHT=' + height
 
-// let WCSurl = 'https://wms.pcn.minambiente.it/wcs/dtm_20m?' + 
-// '&SERVICE=WCS' +
-// '&VERSION=1.0.0' + 
-// '&REQUEST=GetCoverage' +
-// '&FORMAT=GEOTIFF' +
-// '&COVERAGE=EL.DTM.20M' +
-// '&BBOX=' + [(x - width / 2 * mPerPixel),(y - height / 2 * mPerPixel),(x + width / 2 * mPerPixel),(y + height / 2 * mPerPixel)].join(',') +
-// '&CRS=' + CRS +
-// '&RESPONSE_CRS=' + CRS +
-// '&WIDTH=' + width +
-// '&HEIGHT=' + height
-
 async function loadDEM() {
     const myGeoTIFF = await fromUrl(WCSurl, {allowFullFile: true})
     const myGeoTIFFImage = await myGeoTIFF.getImage()
     const myRaster = await myGeoTIFFImage.readRasters()
-    console.log(myRaster)
+
+    const myPlaneGeom = new THREE.PlaneGeometry((width - 1) * mPerPixel, (height - 1) * mPerPixel, width - 1, height - 1)
+    myPlaneGeom.rotateX(Math.PI / 2)
+    //myPlaneGeom.translate( - (width - 1) * mPerPixel / 2, 0,  - (height - 1) * mPerPixel / 2)
+
+    const myRasterData = myRaster[0]
+
+    if (typeof myRasterData == 'number')
+        throw new Error('myRaster[0] is a number, not a TypedArray')
+
+    if (myRasterData.length != myPlaneGeom.attributes.position.count)
+        throw new Error('raster length differs from plane points count')
+
+    
+    myRasterData.forEach((value, i) => {
+        if (typeof value != 'number')
+            throw new Error("raster values are not numbers");
+            
+        myPlaneGeom.attributes.position.setY(i, value)
+    })
+
+    
+
+    const myMaterial = new THREE.MeshLambertMaterial({flatShading: true})
+    myMaterial.color = new THREE.Color(0xa0a0a0)
+    myMaterial.side = THREE.DoubleSide
+    const myPlaneMesh = new THREE.Mesh(myPlaneGeom, myMaterial)
+    scene.add(myPlaneMesh)
+
+    const centralY = myRasterData[Math.floor(myRaster.length / 2)]
+    if (typeof centralY != 'number')
+            throw new Error("raster values are not numbers");
+    
+    camera.translateY(centralY + 20)
+    
 }
 
-const myA = document.createElement("a")
-myA.href = WCSurl
-myA.innerText = "Vai"
-document.body.appendChild(myA)
 
-loadDEM()
+// Create the scene
+const scene = new THREE.Scene();
+
+// Create the camera
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth*0.99 / window.innerHeight*0.99, 0.1, 10000)
+scene.add(camera)
+
+const axesHelper = new THREE.AxesHelper( 500 );
+scene.add( axesHelper );
+
+// Create light
+const light = new THREE.DirectionalLight(0xffffff)
+light.position.set( 1, 1, 1 )
+scene.add( light );
+
+// Create bottomlight
+const blight = new THREE.DirectionalLight(0x900000)
+blight.position.set( 0, -1, 0 ).normalize()
+scene.add( blight );
+
+// Create the renderer and enable XR
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize( window.innerWidth*0.99, window.innerHeight*0.99 );
+renderer.xr.enabled = true;
+
+// Create controls
+const controls = new OrbitControls(camera, renderer.domElement)
 
 
-// const myUrlA = document.createElement("a")
-// myUrlA.href = WCSurl
-// myUrlA.innerText = 'Vai'
-// document.body.appendChild(myUrlA)
+// Append the renderer and the VR button to the page
+document.body.appendChild( renderer.domElement );
+document.body.appendChild( VRButton.createButton( renderer ) );
 
-// // Create the scene
-// const scene = new THREE.Scene();
-
-// // Create the camera
-// const camera = new THREE.PerspectiveCamera()
-// scene.add(camera)
-
-// // Create the renderer and enable XR
-// const renderer = new THREE.WebGLRenderer();
-// renderer.setSize( window.innerWidth*0.99, window.innerHeight*0.99 );
-// renderer.xr.enabled = true;
-
-// // Append the renderer and the VR button to the page
-// document.body.appendChild( renderer.domElement );
-// document.body.appendChild( VRButton.createButton( renderer ) );
-
-// // Rendering loop
-// function render() {
+// Rendering loop
+function render() {
 //   const myXRsession = renderer.xr.getSession();
 
 //   if (myXRsession) {
@@ -102,11 +114,10 @@ loadDEM()
 //       }
 //     })
 
-    
-
 //   }
+  renderer.render( scene, camera );
+}
 
-//   renderer.render( scene, camera );
-// }
+renderer.setAnimationLoop(render)
 
-// renderer.setAnimationLoop(render)
+loadDEM()
