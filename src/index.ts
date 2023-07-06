@@ -23,47 +23,21 @@ let WCSurl = 'https://tinitaly.pi.ingv.it/TINItaly_1_1/wcs?' +
     '&WIDTH='+ width +
     '&HEIGHT=' + height
 
-async function loadDEM() {
-    const myGeoTIFF = await fromUrl(WCSurl, {allowFullFile: true})
-    const myGeoTIFFImage = await myGeoTIFF.getImage()
-    const myRaster = await myGeoTIFFImage.readRasters()
-
-    const myPlaneGeom = new THREE.PlaneGeometry((width - 1) * mPerPixel, (height - 1) * mPerPixel, width - 1, height - 1)
-    myPlaneGeom.rotateX(Math.PI / 2)
-    //myPlaneGeom.translate( - (width - 1) * mPerPixel / 2, 0,  - (height - 1) * mPerPixel / 2)
-
-    const myRasterData = myRaster[0]
-
-    if (typeof myRasterData == 'number')
-        throw new Error('myRaster[0] is a number, not a TypedArray')
-
-    if (myRasterData.length != myPlaneGeom.attributes.position.count)
-        throw new Error('raster length differs from plane points count')
-
-    
-    myRasterData.forEach((value, i) => {
-        if (typeof value != 'number')
-            throw new Error("raster values are not numbers");
-            
-        myPlaneGeom.attributes.position.setY(i, value)
-    })
-
-    
-
-    const myMaterial = new THREE.MeshLambertMaterial({flatShading: true})
-    myMaterial.color = new THREE.Color(0xa0a0a0)
-    myMaterial.side = THREE.DoubleSide
-    const myPlaneMesh = new THREE.Mesh(myPlaneGeom, myMaterial)
-    scene.add(myPlaneMesh)
-
-    const centralY = myRasterData[Math.floor(myRaster.length / 2)]
-    if (typeof centralY != 'number')
-            throw new Error("raster values are not numbers");
-    
-    camera.translateY(centralY + 20)
-    
-}
-
+let WMSurl = 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb?' +
+    'SERVICE=WMS&' +
+    'VERSION=1.3.0' +
+    '&REQUEST=GetMap' +
+    '&BBOX=' + encodeURIComponent([(x - width / 2 * mPerPixel),(y - height / 2 * mPerPixel),(x + width / 2 * mPerPixel),(y + height / 2 * mPerPixel)].join(',')) +
+    '&CRS=' + encodeURIComponent(CRS) + 
+    '&WIDTH=' + width * 10 +
+    '&HEIGHT=' + height * 10 +
+    '&LAYERS=Agea2020_RGB' +
+    '&STYLES=' +
+    '&FORMAT=image%2Fpng' +
+    '&DPI=96' +
+    '&MAP_RESOLUTION=96' +
+    '&FORMAT_OPTIONS=dpi%3A96' +
+    '&TRANSPARENT=TRUE'
 
 // Create the scene
 const scene = new THREE.Scene();
@@ -84,6 +58,71 @@ scene.add( light );
 const blight = new THREE.DirectionalLight(0x900000)
 blight.position.set( 0, -1, 0 ).normalize()
 scene.add( blight );
+
+const myPlaneGeom = new THREE.PlaneGeometry((width - 1) * mPerPixel, (height - 1) * mPerPixel, width - 1, height - 1)
+myPlaneGeom.rotateX(- Math.PI / 2)
+
+const myMaterial = new THREE.MeshLambertMaterial({flatShading: true})
+    myMaterial.color = new THREE.Color(0xa0a0a0)
+    myMaterial.side = THREE.DoubleSide
+    const myPlaneMesh = new THREE.Mesh(myPlaneGeom, myMaterial)
+    scene.add(myPlaneMesh)
+
+
+
+async function loadDEM() {
+    const myGeoTIFF = await fromUrl(WCSurl, {allowFullFile: true})
+    const myGeoTIFFImage = await myGeoTIFF.getImage()
+    const myRaster = await myGeoTIFFImage.readRasters()    
+
+    const myRasterData = myRaster[0]
+
+    if (typeof myRasterData == 'number')
+        throw new Error('myRaster[0] is a number, not a TypedArray')
+
+    if (myRasterData.length != myPlaneGeom.attributes.position.count)
+        throw new Error('raster length differs from plane points count')
+
+    
+    myRasterData.forEach((value, i) => {
+        if (typeof value != 'number')
+            throw new Error("raster values are not numbers");
+            
+        myPlaneGeom.attributes.position.setY(i, value)
+    })
+   
+    myPlaneMesh.geometry.dispose()
+    myPlaneMesh.geometry = myPlaneGeom
+
+    const centralY = myRasterData[Math.floor(myRaster.length / 2)]
+    if (typeof centralY != 'number')
+            throw new Error("raster values are not numbers");
+    
+    camera.translateY(centralY + 3000)
+    camera.lookAt(0,0,0)
+
+    // TODO catch errors
+    // TODO loading indicator
+    
+}
+
+async function loadOrthophoto() {
+    const myWMSResponse = await fetch(WMSurl)
+    const myBlob = await myWMSResponse.blob()
+    const myBlobURL = URL.createObjectURL(myBlob)
+
+
+
+    const myTexture = new THREE.TextureLoader().load(myBlobURL) // TODO callbacks (https://threejs.org/docs/#api/en/loaders/TextureLoader)
+    
+    myPlaneMesh.material.map = myTexture
+    myPlaneMesh.material.needsUpdate = true
+
+    // TODO catch errors
+    // TODO loading indicator
+}
+
+
 
 // Create the renderer and enable XR
 const renderer = new THREE.WebGLRenderer();
@@ -121,3 +160,4 @@ function render() {
 renderer.setAnimationLoop(render)
 
 loadDEM()
+loadOrthophoto()
