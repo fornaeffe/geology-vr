@@ -5,8 +5,10 @@ import { fromUrl  } from "geotiff";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const CRS = 'EPSG:32632' // Coordinate reference system
-const x = 580239 // Easting of map center
-const y = 4917120 // Northing of map center
+// const x = 580239 // Easting of map center
+// const y = 4917120 // Northing of map center
+const x = 600799 // Easting of map center
+const y = 4929534 // Northing of map center
 const width = 4000 // Map width in m
 const height = 3000 // Map height in m
 const vertexResolution = 10 // Distance from vertices in m
@@ -53,6 +55,23 @@ let WMSurl = 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb?' +
     '&FORMAT_OPTIONS=dpi%3A96' +
     '&TRANSPARENT=TRUE'
 
+// Compose WMS request URL for geology
+let WMSurlGEO = 'https://servizigis.regione.emilia-romagna.it/wms/geologia10k?' +
+    'SERVICE=WMS&' +
+    'VERSION=1.3.0' +
+    '&REQUEST=GetMap' +
+    '&BBOX=' + encodeURIComponent(BBox.join(',')) +
+    '&CRS=' + encodeURIComponent(CRS) + 
+    '&WIDTH=' + textureWidth +
+    '&HEIGHT=' + textureHeight +
+    '&LAYERS=Unita_geologiche_10K' +
+    '&STYLES=' +
+    '&FORMAT=image%2Fpng' +
+    '&DPI=96' +
+    '&MAP_RESOLUTION=96' +
+    '&FORMAT_OPTIONS=dpi%3A96' +
+    '&TRANSPARENT=TRUE'
+
 // Create the scene
 const scene = new THREE.Scene();
 
@@ -66,7 +85,7 @@ scene.add( axesHelper );
 
 // Create light
 const light = new THREE.DirectionalLight(0xffffff)
-light.position.set( 1, 1, 1 )
+light.position.set( -1, 2, -1 )
 scene.add( light );
 
 // Create bottomlight
@@ -127,22 +146,27 @@ async function loadDEM() {
     
 }
 
-// Function that loads orthophoto
-async function loadOrthophoto() {
+// Function that loads png from WMS
+async function loadWMS(url: string) : Promise<string> {
     // Fetch WMS for orthophoto
-    const myWMSResponse = await fetch(WMSurl)
+    const myWMSResponse = await fetch(url)
     const myBlob = await myWMSResponse.blob()
     const myBlobURL = URL.createObjectURL(myBlob)
-
+    return myBlobURL
     // Load texture
-    const myTexture = new THREE.TextureLoader().load(myBlobURL) // TODO callbacks (https://threejs.org/docs/#api/en/loaders/TextureLoader)
+    
+
+    // TODO catch errors
+    // TODO loading indicator
+}
+
+// Function that apply texture to plane
+function applyTexture(url: string) {
+    const myTexture = new THREE.TextureLoader().load(url) // TODO callbacks (https://threejs.org/docs/#api/en/loaders/TextureLoader)
     
     // Apply texture
     myPlaneMesh.material.map = myTexture
     myPlaneMesh.material.needsUpdate = true
-
-    // TODO catch errors
-    // TODO loading indicator
 }
 
 
@@ -182,5 +206,27 @@ function render() {
 
 renderer.setAnimationLoop(render)
 
+// Load and apply DEM
 loadDEM()
-loadOrthophoto()
+
+// Load and apply ortophoto, and store its blob URL
+let OPurl = ''
+loadWMS(WMSurl).then((url) => {
+    applyTexture(url)
+    OPurl = url
+})
+
+// Load geology map, and store its blob URL
+let GEOurl = ''
+loadWMS(WMSurlGEO).then((url) => {
+    GEOurl = url
+})
+
+// Change between ortophoto and geology map
+let geo = false
+renderer.domElement.addEventListener('auxclick', (ev) => {
+    geo = !geo
+    applyTexture( geo ? GEOurl : OPurl )
+    myPlaneMesh.material.flatShading = geo
+    myPlaneMesh.material.needsUpdate = true
+})
