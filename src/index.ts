@@ -4,33 +4,47 @@ import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { fromUrl  } from "geotiff";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-const CRS = 'EPSG:32632'
-const x = 580239
-const y = 4917120
-const width = 120
-const height = 100
-const mPerPixel = 20
+const CRS = 'EPSG:32632' // Coordinate reference system
+const x = 580239 // Easting of map center
+const y = 4917120 // Northing of map center
+const width = 4000 // Map width in m
+const height = 3000 // Map height in m
+const vertexResolution = 10 // Distance from vertices in m
+const textureResolution = 2 // Texture pixel width in m
 
+const widthSegments = Math.floor(width / vertexResolution) // Number of plane segments along width
+const heightSegments = Math.floor(height / vertexResolution) // Number of plane vertices along height
+const widthPoints = widthSegments + 1 // Number of plane vertices along width 
+const heightPoints = heightSegments + 1 // Number of plane vertices along height
+const textureWidth = Math.floor(width / textureResolution) // Pixel width of texture
+const textureHeight = Math.floor(height / textureResolution) // Pixel heigth of texture
+
+// Calculate bounding box
+const BBox = [x - width /  2, y - height / 2, x + width / 2, y + height / 2]
+const BBoxDEM = [x - (width + vertexResolution) /  2, y - (height + vertexResolution) / 2, x + (width + vertexResolution) / 2, y + (height + vertexResolution) / 2]
+
+// Compose WCS request URL for DEM
 let WCSurl = 'https://tinitaly.pi.ingv.it/TINItaly_1_1/wcs?' +
     'SERVICE=WCS' +
     '&VERSION=1.0.0' +
     '&REQUEST=GetCoverage' +
     '&FORMAT=GeoTIFF' +
     '&COVERAGE=TINItaly_1_1:tinitaly_dem' +
-    '&BBOX=' + [(x - width / 2 * mPerPixel),(y - height / 2 * mPerPixel),(x + width / 2 * mPerPixel),(y + height / 2 * mPerPixel)].join(',') +
+    '&BBOX=' + BBoxDEM.join(',') +
     '&CRS=' + CRS +
     '&RESPONSE_CRS=' + CRS +
-    '&WIDTH='+ width +
-    '&HEIGHT=' + height
+    '&WIDTH='+ widthPoints +
+    '&HEIGHT=' + heightPoints
 
+// Compose WMS request URL for orthophoto
 let WMSurl = 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb?' +
     'SERVICE=WMS&' +
     'VERSION=1.3.0' +
     '&REQUEST=GetMap' +
-    '&BBOX=' + encodeURIComponent([(x - width / 2 * mPerPixel),(y - height / 2 * mPerPixel),(x + width / 2 * mPerPixel),(y + height / 2 * mPerPixel)].join(',')) +
+    '&BBOX=' + encodeURIComponent(BBox.join(',')) +
     '&CRS=' + encodeURIComponent(CRS) + 
-    '&WIDTH=' + width * 10 +
-    '&HEIGHT=' + height * 10 +
+    '&WIDTH=' + textureWidth +
+    '&HEIGHT=' + textureHeight +
     '&LAYERS=Agea2020_RGB' +
     '&STYLES=' +
     '&FORMAT=image%2Fpng' +
@@ -46,6 +60,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth*0.99 / window.innerHeight*0.99, 0.1, 10000)
 scene.add(camera)
 
+// DEV: create axes Helper
 const axesHelper = new THREE.AxesHelper( 500 );
 scene.add( axesHelper );
 
@@ -59,31 +74,36 @@ const blight = new THREE.DirectionalLight(0x900000)
 blight.position.set( 0, -1, 0 ).normalize()
 scene.add( blight );
 
-const myPlaneGeom = new THREE.PlaneGeometry((width - 1) * mPerPixel, (height - 1) * mPerPixel, width - 1, height - 1)
+// Create plane geometry
+const myPlaneGeom = new THREE.PlaneGeometry(width, height, widthSegments, heightSegments)
 myPlaneGeom.rotateX(- Math.PI / 2)
 
-const myMaterial = new THREE.MeshLambertMaterial({flatShading: true})
+// Create plane material
+// const myMaterial = new THREE.MeshLambertMaterial({flatShading: true})
+const myMaterial = new THREE.MeshLambertMaterial()
     myMaterial.color = new THREE.Color(0xa0a0a0)
     myMaterial.side = THREE.DoubleSide
     const myPlaneMesh = new THREE.Mesh(myPlaneGeom, myMaterial)
     scene.add(myPlaneMesh)
 
 
-
+// Function that loads DEM
 async function loadDEM() {
+    // Fetch WCS GeoTIFF and read the raster data
     const myGeoTIFF = await fromUrl(WCSurl, {allowFullFile: true})
     const myGeoTIFFImage = await myGeoTIFF.getImage()
-    const myRaster = await myGeoTIFFImage.readRasters()    
-
+    const myRaster = await myGeoTIFFImage.readRasters()
     const myRasterData = myRaster[0]
 
+    // Typeguard
     if (typeof myRasterData == 'number')
         throw new Error('myRaster[0] is a number, not a TypedArray')
 
+    // Check if for every vertex in plane there is a data point in raster
     if (myRasterData.length != myPlaneGeom.attributes.position.count)
         throw new Error('raster length differs from plane points count')
 
-    
+    // Assing elevation for each vertex
     myRasterData.forEach((value, i) => {
         if (typeof value != 'number')
             throw new Error("raster values are not numbers");
@@ -91,13 +111,14 @@ async function loadDEM() {
         myPlaneGeom.attributes.position.setY(i, value)
     })
    
+    // Update mesh
     myPlaneMesh.geometry.dispose()
     myPlaneMesh.geometry = myPlaneGeom
 
+    // Update camera position
     const centralY = myRasterData[Math.floor(myRaster.length / 2)]
     if (typeof centralY != 'number')
-            throw new Error("raster values are not numbers");
-    
+            throw new Error("raster values are not numbers");    
     camera.translateY(centralY + 3000)
     camera.lookAt(0,0,0)
 
@@ -106,15 +127,17 @@ async function loadDEM() {
     
 }
 
+// Function that loads orthophoto
 async function loadOrthophoto() {
+    // Fetch WMS for orthophoto
     const myWMSResponse = await fetch(WMSurl)
     const myBlob = await myWMSResponse.blob()
     const myBlobURL = URL.createObjectURL(myBlob)
 
-
-
+    // Load texture
     const myTexture = new THREE.TextureLoader().load(myBlobURL) // TODO callbacks (https://threejs.org/docs/#api/en/loaders/TextureLoader)
     
+    // Apply texture
     myPlaneMesh.material.map = myTexture
     myPlaneMesh.material.needsUpdate = true
 
