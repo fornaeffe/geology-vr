@@ -85,6 +85,7 @@ let WMSurlGEO = 'https://servizigis.regione.emilia-romagna.it/wms/geologia10k?' 
 
 // Create the scene
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB)
 
 // Create the camera
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth*0.99 / window.innerHeight*0.99, 0.1, 10000)
@@ -253,6 +254,7 @@ function changeTexture() {
 renderer.domElement.addEventListener('auxclick', (ev) => {
     changeTexture()
 })
+
 
 
 
