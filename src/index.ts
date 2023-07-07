@@ -209,6 +209,10 @@ renderer.xr.addEventListener("sessionstart", (e) => {
     const newReferenceSpace = baseReferenceSpace.getOffsetReferenceSpace(myTransform)
     renderer.xr.setReferenceSpace(newReferenceSpace)
 
+    renderer.xr.getController(0).addEventListener('squeezestart', (e) => {
+        changeTexture()
+    })
+
 })
 
 // Append the renderer and the VR button to the page
