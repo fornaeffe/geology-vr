@@ -3,12 +3,21 @@ import * as THREE from 'three';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { fromUrl  } from "geotiff";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { VRFlyControls } from './VRFlyControls';
 
 const CRS = 'EPSG:32632' // Coordinate reference system
+
+// Lago Santo
 // const x = 580239 // Easting of map center
 // const y = 4917120 // Northing of map center
-const x = 600799 // Easting of map center
-const y = 4929534 // Northing of map center
+
+// Monte Fuso
+// const x = 600799 // Easting of map center
+// const y = 4929534 // Northing of map center
+
+// Pietra di Bismantova
+const x = 612400 // Easting of map center
+const y = 4919216 // Northing of map center
 const width = 4000 // Map width in m
 const height = 3000 // Map height in m
 const vertexResolution = 10 // Distance from vertices in m
@@ -71,6 +80,8 @@ let WMSurlGEO = 'https://servizigis.regione.emilia-romagna.it/wms/geologia10k?' 
     '&MAP_RESOLUTION=96' +
     '&FORMAT_OPTIONS=dpi%3A96' +
     '&TRANSPARENT=TRUE'
+
+
 
 // Create the scene
 const scene = new THREE.Scene();
@@ -178,30 +189,37 @@ renderer.xr.enabled = true;
 
 // Create controls
 const controls = new OrbitControls(camera, renderer.domElement)
+const myVRcontrols = new VRFlyControls(renderer)
 
+// XR session initialization
+renderer.xr.addEventListener("sessionstart", (e) => {
+
+    // Find plane center height
+    const myRaycaster = new THREE.Raycaster()
+    myRaycaster.set(new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0))
+    const intersections = myRaycaster.intersectObject(myPlaneMesh)
+
+    if (intersections.length < 1)
+        return;
+    
+    // Move the plane below the observer
+    const baseReferenceSpace = renderer.xr.getReferenceSpace()
+    const myTransform = new XRRigidTransform({y: - (intersections[0].point.y + 1.6)})
+    const newReferenceSpace = baseReferenceSpace.getOffsetReferenceSpace(myTransform)
+    renderer.xr.setReferenceSpace(newReferenceSpace)
+
+})
 
 // Append the renderer and the VR button to the page
 document.body.appendChild( renderer.domElement );
 document.body.appendChild( VRButton.createButton( renderer ) );
 
+
+
 // Rendering loop
 function render() {
-//   const myXRsession = renderer.xr.getSession();
-
-//   if (myXRsession) {
-
-//     myXRsession.inputSources.forEach((mySource, i) => {
-
-//       if (mySource.gamepad) {
-//         mySource.gamepad.axes.forEach((axisValue, j) => {
-//         })
-//         mySource.gamepad.buttons.forEach((myButton, k) => {
-//         })
-//       }
-//     })
-
-//   }
-  renderer.render( scene, camera );
+    myVRcontrols.update()
+    renderer.render( scene, camera )
 }
 
 renderer.setAnimationLoop(render)
@@ -224,9 +242,17 @@ loadWMS(WMSurlGEO).then((url) => {
 
 // Change between ortophoto and geology map
 let geo = false
-renderer.domElement.addEventListener('auxclick', (ev) => {
+
+function changeTexture() {
     geo = !geo
     applyTexture( geo ? GEOurl : OPurl )
     myPlaneMesh.material.flatShading = geo
     myPlaneMesh.material.needsUpdate = true
+}
+
+renderer.domElement.addEventListener('auxclick', (ev) => {
+    changeTexture()
 })
+
+
+
