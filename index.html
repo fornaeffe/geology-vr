@@ -4,11 +4,37 @@
 		<meta charset="utf-8">
 		<title>Geology in VR</title>
 		<style>
-			body { margin: 0; }
+			body { 
+				margin: 0;
+				font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			}
+			#menu { 
+				background-color: #ffffffaa;
+				position: absolute;
+				top: 0;
+				left: 0;
+			}
+			#menubutton {
+				cursor: pointer;
+				padding: .5em;
+			}
+			#innermenu {
+				padding: .5em;
+			}
+			.hiddenmenu {
+				display: none;
+			}
 		</style>
 	</head>
 	<body>
-		
+		<div id="menu">
+			<div id="menubutton"><img src="assets/menu-button-of-three-horizontal-lines.png" alt="Menu"/></div>
+			<div id="innermenu" class="hiddenmenu">
+				<label for="coords">Coordinates (e.g. 44.788, 10.336)</label><br />
+				<input type="text" id="coords" /><input type="button" value="GO" /><br />
+				<a href="credits.html" >Credits</a>
+			</div>
+		</div>
 		<script src="script/bundle.js"></script>
 	</body>
 </html>

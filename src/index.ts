@@ -5,6 +5,14 @@ import { fromUrl  } from "geotiff";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRFlyControls } from './VRFlyControls';
 
+
+// Menu
+const menuButton = document.getElementById("menubutton")
+const innerMenu = document.getElementById("innermenu")
+menuButton.addEventListener('click', (e) => {
+    innerMenu.classList.toggle('hiddenmenu')
+})
+
 const CRS = 'EPSG:32632' // Coordinate reference system
 
 // Lago Santo
