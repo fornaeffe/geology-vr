@@ -2,7 +2,7 @@ import * as THREE from 'three';
 // import {Text} from 'troika-three-text'
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { fromUrl  } from "geotiff";
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
 import { VRFlyControls } from './VRFlyControls';
 import proj4 from 'proj4';
 
@@ -287,7 +287,7 @@ renderer.setSize( window.innerWidth*0.99, window.innerHeight*0.99 );
 renderer.xr.enabled = true;
 
 // Create controls
-const controls = new OrbitControls(camera, renderer.domElement)
+const controls = new MapControls(camera, renderer.domElement)
 const myVRcontrols = new VRFlyControls(renderer)
 
 // XR session initialization
