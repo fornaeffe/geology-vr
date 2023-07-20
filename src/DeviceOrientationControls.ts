@@ -17,7 +17,6 @@ export class DeviceOrientationControls {
     onMovementDetected = () => {}
     
     constructor(camera: THREE.Camera) {
-        camera.rotation.reorder( "YXZ" )
         this.camera = camera
         this.connect()
     }
