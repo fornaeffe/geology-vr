@@ -24,6 +24,39 @@
 			.hiddenmenu {
 				display: none;
 			}
+
+			/* Checkboxes */
+			/* from https://codepen.io/JAGATHISH1123/embed/PvayMB?default-tab=&theme-id= */
+			.switch {
+			position: relative;
+			display: inline-block;
+			width: 32px;
+			height: 16px;
+			background-color: rgba(255, 255, 255, 0.25);
+			border-radius: 16px;
+			transition: all 0.3s;
+			}
+			.switch::after {
+			content: '';
+			position: absolute;
+			width: 12px;
+			height: 12px;
+			border-radius:50%;
+			background-color: white;
+			top: 2px;
+			left: 2px;
+			transition: all 0.3s;
+			}
+
+			.checkbox:checked + .switch::after {
+			left : 16px;
+			}
+			.checkbox:checked + .switch {
+			background-color: #bada55;
+			}
+			.checkbox {
+			display : none;
+			}
 		</style>
 	</head>
 	<body>
@@ -33,7 +66,10 @@
 				<label for="coords">Coordinates (e.g. 44.788, 10.336)</label><br />
 				<input type="text" id="coords" /><input type="button" value="GO" id="gobutton" /><br />
 				<input type="button" value="Switch map" id="switchmapbutton" /><br />
-				<a href="credits.html" >Credits</a>
+				<a href="credits.html" >Credits</a><br />
+				<input type="checkbox" id="controlSwitch" class="checkbox" />  
+				<label for="controlSwitch" class="switch"></label>
+				Device orientation controls
 			</div>
 		</div>
 		<script src="script/bundle.js"></script>

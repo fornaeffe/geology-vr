@@ -5,6 +5,7 @@ import { fromUrl  } from "geotiff";
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
 import { VRFlyControls } from './VRFlyControls';
 import proj4 from 'proj4';
+import { DeviceOrientationControls } from './DeviceOrientationControls';
 
 
 
@@ -286,12 +287,36 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth*0.99, window.innerHeight*0.99 );
 renderer.xr.enabled = true;
 
+// Control switch
+const controlSwitch = document.getElementById('controlSwitch') as HTMLInputElement
+
 // Create controls
 const controls = new MapControls(camera, renderer.domElement)
 const myVRcontrols = new VRFlyControls(renderer)
+const DOCcontrols = new DeviceOrientationControls(camera)
+
+// If device orientation changes, disable map controls
+DOCcontrols.onMovementDetected = () => {
+    controls.enabled = false
+    controlSwitch.checked = true
+}
+
+// Control switch handling
+controlSwitch.addEventListener('change', (e) => {
+    if (controlSwitch.checked) {
+        DOCcontrols.connect()
+        controls.enabled = false
+    } else {
+        DOCcontrols.disconnect()
+        controls.enabled = true
+    }
+})
 
 // XR session initialization
 renderer.xr.addEventListener("sessionstart", (e) => {
+
+    // Switch off DOC controls
+    DOCcontrols.disconnect()
 
     // Find plane center height
     const myRaycaster = new THREE.Raycaster()
@@ -364,3 +389,4 @@ GOButton.addEventListener('click', (e) => {
 
 const switchMapButton = document.getElementById('switchmapbutton')
 switchMapButton.addEventListener('click', (e) => changeTexture())
+
