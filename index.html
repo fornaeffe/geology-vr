@@ -3,6 +3,8 @@
 	<head>
 		<meta charset="utf-8">
 		<title>Geology in VR</title>
+		<link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined"
+      		rel="stylesheet">
 		<style>
 			body { 
 				margin: 0;
@@ -23,6 +25,16 @@
 			}
 			.hiddenmenu {
 				display: none;
+			}
+
+			.dialog {
+				background-color: #ffffffaa;
+
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				margin-right: -50%;
+				transform: translate(-50%, -50%);
 			}
 
 			/* Checkboxes */
@@ -61,17 +73,35 @@
 	</head>
 	<body>
 		<div id="menu">
-			<div id="menubutton"><img src="assets/menu-button-of-three-horizontal-lines.png" alt="Menu"/></div>
+			<span id="menubutton" class="material-icons">menu</span>
 			<div id="innermenu" class="hiddenmenu">
-				<label for="coords">Coordinates (e.g. 44.788, 10.336)</label><br />
-				<input type="text" id="coords" /><input type="button" value="GO" id="gobutton" /><br />
-				<input type="button" value="Switch map" id="switchmapbutton" /><br />
-				<a href="credits.html" >Credits</a><br />
-				<input type="checkbox" id="controlSwitch" class="checkbox" />  
-				<label for="controlSwitch" class="switch"></label>
-				Device orientation controls
+				<span class="material-icons-outlined" id="layers-button">layers</span><br/>
+				<span class="material-icons-outlined" id="location-button">place</span><br/>
+				<span class="material-icons-outlined" id="device-button">computer</span><br/>
+				<a href="credits.html" ><span class="material-icons-outlined">info</span></a><br/>
 			</div>
 		</div>
+		
+		<div id="layers-dialog" class="dialog hiddenmenu">
+			<div><span class="material-icons-outlined">close</span></div>
+			<div id="orthophoto">Orthophoto</div>
+			<div id="geo">Geological map</div>
+		</div>
+		<div id="location-dialog" class="dialog hiddenmenu">
+			<div><span class="material-icons-outlined">close</span></div>
+			<input type="text" id="coords" /><input type="button" value="GO" id="gobutton" />
+			<span class="material-icons-outlined">my_location</span>
+			<br />
+		</div>
+		<div id="device-dialog" class="dialog hiddenmenu">
+			<div><span class="material-icons-outlined">close</span></div>
+			<div id="device-list">
+				<span class="material-icons-outlined" id="computer-button">computer</span>
+				<span class="material-icons-outlined" id="mobile-button">smartphone</span>
+			</div>
+		</div>
+
+
 		<script src="script/bundle.js"></script>
 	</body>
 </html>

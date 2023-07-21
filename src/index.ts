@@ -45,60 +45,18 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth*0.99, window.innerHeight*0.99 );
 renderer.xr.enabled = true;
 
-// Control switch
-const controlSwitch = document.getElementById('controlSwitch') as HTMLInputElement
-
 // Create controls
 const controls = new MapControls(camera, renderer.domElement)
 const myVRcontrols = new VRFlyControls(renderer)
 const DOCcontrols = new DeviceOrientationControls(camera)
 
-function resetCameraPosition() {
-    // Find plane center height
-    const myRaycaster = new THREE.Raycaster()
-    myRaycaster.set(new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0))
-    const intersections = myRaycaster.intersectObject(myTile.mesh)
-
-    if (intersections.length < 1)
-        return;
-    
-    const y = intersections[0].point.y + (viewMode == 'static' ? myTile.width / 2 : 5)
-
-    if (viewMode == 'VR') {
-        // Move the plane below the observer
-        const baseReferenceSpace = renderer.xr.getReferenceSpace()
-        const myTransform = new XRRigidTransform({y: - y})
-        const newReferenceSpace = baseReferenceSpace.getOffsetReferenceSpace(myTransform)
-        renderer.xr.setReferenceSpace(newReferenceSpace)
-    } else {
-        camera.position.set(0,y,0)
-    }
-
-    if (viewMode == 'static')
-        camera.lookAt(0,0,0)
-    
-}
 
 // If device orientation changes, disable map controls
 DOCcontrols.onMovementDetected = () => {
-    controls.enabled = false
-    controlSwitch.checked = true
-    viewMode = 'device orientation'
+    changeViewMode('device orientation')
 }
 
-// Control switch handling
-controlSwitch.addEventListener('change', (e) => {
-    if (controlSwitch.checked) {
-        DOCcontrols.connect()
-        controls.enabled = false
-        viewMode = 'device orientation'
-    } else {
-        DOCcontrols.disconnect()
-        controls.enabled = true
-        viewMode = 'static'
-    }
-    resetCameraPosition()
-})
+
 
 // XR session initialization
 renderer.xr.addEventListener("sessionstart", (e) => {
@@ -116,8 +74,11 @@ renderer.xr.addEventListener("sessionstart", (e) => {
 })
 
 // Append the renderer and the VR button to the page
-document.body.appendChild( renderer.domElement );
-document.body.appendChild( VRButton.createButton( renderer ) );
+document.body.appendChild( renderer.domElement )
+
+const myVRButton = VRButton.createButton( renderer )
+myVRButton.style.position = 'static'
+document.getElementById('device-list').appendChild( myVRButton )
 
 
 
@@ -149,6 +110,47 @@ menuButton.addEventListener('click', (e) => {
     innerMenu.classList.toggle('hiddenmenu')
 })
 
+const layersButton = document.getElementById('layers-button')
+const layersDialog = document.getElementById('layers-dialog')
+layersButton.addEventListener('click', (e) => {
+    innerMenu.classList.add('hiddenmenu')
+    layersDialog.classList.remove('hiddenmenu')
+})
+layersDialog.firstElementChild.addEventListener('click', (e) => {
+    layersDialog.classList.add('hiddenmenu')
+})
+
+const locationButton = document.getElementById('location-button')
+const locationDialog = document.getElementById('location-dialog')
+locationButton.addEventListener('click', (e) => {
+    innerMenu.classList.add('hiddenmenu')
+    locationDialog.classList.remove('hiddenmenu')
+})
+locationDialog.firstElementChild.addEventListener('click', (e) => {
+    locationDialog.classList.add('hiddenmenu')
+})
+
+const deviceButton = document.getElementById('device-button')
+const deviceDialog = document.getElementById('device-dialog')
+deviceButton.addEventListener('click', (e) => {
+    innerMenu.classList.add('hiddenmenu')
+    deviceDialog.classList.remove('hiddenmenu')
+})
+deviceDialog.firstElementChild.addEventListener('click', (e) => {
+    deviceDialog.classList.add('hiddenmenu')
+})
+
+
+document.getElementById('orthophoto').addEventListener('click', (e) => {
+    myTile.changeTexture(false)
+    geo = false
+})
+document.getElementById('geo').addEventListener('click', (e) => {
+    myTile.changeTexture(true)
+    geo = true
+})
+
+
 const coordInput = document.getElementById('coords') as HTMLInputElement
 const GOButton = document.getElementById("gobutton")
 GOButton.addEventListener('click', (e) => {
@@ -162,8 +164,65 @@ GOButton.addEventListener('click', (e) => {
     const coordsUTM = proj4('WGS84', 'EPSG:32632', coords.reverse())
 
     myTile.reset(coordsUTM[0], coordsUTM[1])
+    
+    locationDialog.classList.add('hiddenmenu')
 })
 
-const switchMapButton = document.getElementById('switchmapbutton')
-switchMapButton.addEventListener('click', (e) => changeTexture())
+const computerButton = document.getElementById('computer-button')
+computerButton.addEventListener('click', (e) => {
+    changeViewMode('static')
+    deviceDialog.classList.add('hiddenmenu')
+})
+const mobileButton = document.getElementById('mobile-button')
+mobileButton.addEventListener('click', (e) => {
+    changeViewMode('device orientation')
+    deviceDialog.classList.add('hiddenmenu')
+})
 
+function changeViewMode(newViewMode : ViewMode) {
+    switch (newViewMode) {
+        case 'static':
+            controls.enabled = true
+
+            if (DOCcontrols.enabled) DOCcontrols.disconnect()
+
+            deviceButton.innerHTML = 'computer'
+            break
+        case 'device orientation':
+            controls.enabled = false
+
+            if (!DOCcontrols.enabled) DOCcontrols.connect()
+
+            deviceButton.innerHTML = 'smartphone'
+            break
+
+    }
+    viewMode = newViewMode
+    resetCameraPosition()
+}
+
+function resetCameraPosition() {
+    // Find plane center height
+    const myRaycaster = new THREE.Raycaster()
+    myRaycaster.set(new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0))
+    const intersections = myRaycaster.intersectObject(myTile.mesh)
+
+    if (intersections.length < 1)
+        return;
+    
+    const y = intersections[0].point.y + (viewMode == 'static' ? myTile.width / 2 : 5)
+
+    if (viewMode == 'VR') {
+        // Move the plane below the observer
+        const baseReferenceSpace = renderer.xr.getReferenceSpace()
+        const myTransform = new XRRigidTransform({y: - y})
+        const newReferenceSpace = baseReferenceSpace.getOffsetReferenceSpace(myTransform)
+        renderer.xr.setReferenceSpace(newReferenceSpace)
+    } else {
+        camera.position.set(0,y,0)
+    }
+
+    if (viewMode == 'static')
+        camera.lookAt(0,0,0)
+    
+}
