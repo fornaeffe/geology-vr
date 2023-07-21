@@ -38,6 +38,10 @@
 				cursor: pointer;
 			}
 
+			.clickable:hover {
+				text-decoration: underline;
+			}
+
 			.md-18 { font-size: 18px; }
 			.md-24 { font-size: 24px; }
 			.md-36 { font-size: 36px; }
@@ -57,6 +61,17 @@
 				transform: translate(-50%, -50%);
 			}
 
+			.instruction {
+				padding: 16px;
+				color: #303030;
+			}
+
+			.small {
+				font-size: 16px;
+				padding: 8px;
+				color: #303030;
+			}
+
 			input {
 				font-size: 24px;
 				margin: 8px;
@@ -74,33 +89,41 @@
 		<div id="menu">
 			<span id="menubutton" class="material-icons md-36">menu</span>
 			<div id="innermenu" class="hiddenmenu">
-				<span class="material-icons-outlined md-36 menuitem" id="layers-button">layers</span><br/>
-				<span class="material-icons-outlined md-36 menuitem" id="location-button">place</span><br/>
-				<span class="material-icons-outlined md-36 menuitem" id="device-button">computer</span><br/>
-				<a href="credits.html" ><span class="material-icons-outlined md-36 menuitem">info</span></a><br/>
+				<span class="material-icons-outlined md-36 menuitem" id="layers-button" aria-label="Layers">layers</span><br/>
+				<span class="material-icons-outlined md-36 menuitem" id="location-button" aria-label="Location">place</span><br/>
+				<span class="material-icons-outlined md-36 menuitem" id="device-button" aria-label="View mode">computer</span><br/>
+				<a href="credits.html" ><span class="material-icons-outlined md-36 menuitem" aria-label="Info and help">info</span></a><br/>
 			</div>
 		</div>
 		
 		<div id="layers-dialog" class="dialog hiddenmenu">
-			<div><span class="material-icons-outlined md-48 clickable">close</span></div>
+			<div><span class="material-icons-outlined md-48 clickable" aria-label="Close">close</span></div>
+			<div class="instruction">Choose a texture:</div>
 			<div id="orthophoto" class="clickable">Orthophoto</div>
 			<div id="geo" class="clickable">Geological map</div>
+			<div class="small">(from <a href="https://geoportale.regione.emilia-romagna.it/servizi/servizi-ogc/elenco-capabilities-dei-servizi-wms">Geoportale Emilia Romagna</a>)</div>
 		</div>
+
 		<div id="location-dialog" class="dialog hiddenmenu">
-			<div><span class="material-icons-outlined md-48 clickable">close</span></div>
+			<div><span class="material-icons-outlined md-48 clickable" aria-label="Close">close</span></div>
 			
-			
+			<div class="instruction">Insert coordinates (copy from Google Maps)</div>
 			<div class="row">
-				<input type="text" id="coords" /><input type="button" value="GO" id="gobutton" />
-				<span class="material-icons-outlined md-48 clickable" id="my-location">my_location</span>
+				<span class="material-icons-outlined md-48 clickable" id="my-location" aria-label="My location">my_location</span>
+				<input type="text" id="coords" /><input type="button" value="GO" id="gobutton"/>				
 			</div>
 			<div id="accuracy"></div>
+			<div class="small">
+				Works only in Emilia-Romagna mountains, for now...<br/>
+			</div>
 		</div>
+
 		<div id="device-dialog" class="dialog hiddenmenu">
-			<div><span class="material-icons-outlined md-48 clickable">close</span></div>
+			<div><span class="material-icons-outlined md-48 clickable" aria-label="Close">close</span></div>
+			<div class="instruction">Choose controls type</div>
 			<div id="device-list" class="row">
-				<span class="material-icons-outlined md-48 clickable" id="computer-button">computer</span>
-				<span class="material-icons-outlined md-48 clickable" id="mobile-button">smartphone</span>
+				<span class="material-icons-outlined md-48 clickable" id="computer-button" aria-label="Mouse or touch controls">computer</span>
+				<span class="material-icons-outlined md-48 clickable" id="mobile-button" aria-label="Device orientation controls">smartphone</span>
 			</div>
 		</div>
 

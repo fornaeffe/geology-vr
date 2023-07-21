@@ -5,11 +5,12 @@ export class VRFlyControls {
     // renderer that contains xr session
     renderer: THREE.WebGLRenderer 
 
-    // maximum speed in m/s^2
-    maxSpeed = 30
+    // speed in m/s^2 when one thumbstick is 100% forward
+    speedFactor = 30
 
 
     // seconds per frame
+    // Don't know if it is really the fps whe have... Maybe we should get the real fps?
     secondsPerFrame = 1 / 60
 
     
@@ -43,21 +44,19 @@ export class VRFlyControls {
 
         })
 
-        velocity.multiplyScalar(this.maxSpeed * this.secondsPerFrame)
+        velocity.multiplyScalar(this.speedFactor * this.secondsPerFrame)
         velocity.applyQuaternion(this.renderer.xr.getCamera().quaternion)
 
         // MOVE OBSERVER
         // Get actual reference space
         const baseReferenceSpace = this.renderer.xr.getReferenceSpace()
         // Change reference space
-        // const myTransform = new XRRigidTransform(this.velocity.clone().negate())
         const myTransform = new XRRigidTransform(velocity.negate()) 
         const newReferenceSpace = baseReferenceSpace.getOffsetReferenceSpace(myTransform)
         this.renderer.xr.setReferenceSpace(newReferenceSpace)
 
         return
 
-        // 
     }
 
 }

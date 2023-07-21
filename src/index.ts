@@ -9,11 +9,11 @@ const myGeoViewer = new GeoViewer()
 // Append the renderer and the VR button to the page
 document.body.appendChild( myGeoViewer.renderer.domElement )
 
+// Create the VRButton, but in a non default position (inside device dialog)
+// TODO: find a nice icon for VR Button
 const myVRButton = VRButton.createButton( myGeoViewer.renderer )
 myVRButton.style.position = 'static'
 document.getElementById('device-list').appendChild( myVRButton )
-
-proj4.defs("EPSG:32632","+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs");
 
 // Menu
 const menuButton = document.getElementById("menubutton")
@@ -22,19 +22,24 @@ menuButton.addEventListener('click', (e) => {
     innerMenu.classList.toggle('hiddenmenu')
 })
 
-// TODO riscrivere tutto questo in React o qualcosa del genere
+// TODO rewrite this all with React, or similar...
 // ------------------------- Layers dialog ---------------------------------
 const layersButton = document.getElementById('layers-button')
 const layersDialog = document.getElementById('layers-dialog')
+
+// Open dialog
 layersButton.addEventListener('click', (e) => {
     innerMenu.classList.add('hiddenmenu')
     layersDialog.classList.remove('hiddenmenu')
 })
+
+// Close dialog
 layersDialog.firstElementChild.addEventListener('click', (e) => {
     layersDialog.classList.add('hiddenmenu')
 })
 
-// TODO aggiungere altri livelli
+// TODO add more texture layers
+// Available textures
 document.getElementById('orthophoto').addEventListener('click', (e) => {
     myGeoViewer.changeTexture(false)
 })
@@ -44,7 +49,8 @@ document.getElementById('geo').addEventListener('click', (e) => {
 
 
 // ---------------------------- Location dialog ------------------------------
-let geolocationWatcher : number
+
+let geolocationWatcher : number // Geolocation watcher ID
 
 const locationButton = document.getElementById('location-button')
 const locationDialog = document.getElementById('location-dialog')
@@ -52,12 +58,13 @@ const coordInput = document.getElementById('coords') as HTMLInputElement
 const GOButton = document.getElementById("gobutton")
 const accuracyDiv = document.getElementById('accuracy')
 
+// Open dialog
 locationButton.addEventListener('click', (e) => {
     innerMenu.classList.add('hiddenmenu')
     locationDialog.classList.remove('hiddenmenu')
 })
 
-// Exit button
+// Close dialog
 locationDialog.firstElementChild.addEventListener('click', (e) => {
     locationDialog.classList.add('hiddenmenu')
 
@@ -72,8 +79,10 @@ locationDialog.firstElementChild.addEventListener('click', (e) => {
     accuracyDiv.innerText = ""
 })
 
+// WGS 84 / UTM zone 32N projection definition for coordinates translation
+proj4.defs("EPSG:32632","+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs")
 
-
+// Read coordinates and reload DEM and textures
 GOButton.addEventListener('click', (e) => {
     const coords = coordInput.value.split(", ").map((str) => parseFloat(str))
     
@@ -86,16 +95,20 @@ GOButton.addEventListener('click', (e) => {
 
     myGeoViewer.myTile.reset(coordsUTM[0], coordsUTM[1])
     
+    // If all ok, close the dialog
     locationDialog.classList.add('hiddenmenu')
 })
 
+// My location button
 const myLocationButton = document.getElementById('my-location')
 if ("geolocation" in navigator) {
     myLocationButton.addEventListener('click', (e) => {
 
+        // If already watching, do nothing
         if (geolocationWatcher)
             return;
 
+        // Start reading position
         geolocationWatcher = navigator.geolocation.watchPosition(
             geolocationSuccess,
             geolocationError,
@@ -105,16 +118,23 @@ if ("geolocation" in navigator) {
         )
     })
 } else {
+    // Don't show my location button if geolocation is not available
     myLocationButton.remove()
 }
 
+// This is called at every geolocation fix
 function geolocationSuccess(position : GeolocationPosition) {
     const lat = position.coords.latitude
     const lon = position.coords.longitude
+
+    // Insert coords in text field
     coordInput.value = lat + ", " + lon
-    accuracyDiv.innerText = "Accuracy: " + position.coords.accuracy + " m"
+
+    // Show accuracy
+    accuracyDiv.innerText = "Accuracy: " + position.coords.accuracy.toFixed(0) + " m"
 }
 
+// TODO: show error to user
 function geolocationError(error: GeolocationPositionError) {
     console.error(error)
 }
@@ -123,15 +143,19 @@ function geolocationError(error: GeolocationPositionError) {
 // --------------- Device dialog ----------------------
 const deviceButton = document.getElementById('device-button')
 const deviceDialog = document.getElementById('device-dialog')
+
+// Open dialog
 deviceButton.addEventListener('click', (e) => {
     innerMenu.classList.add('hiddenmenu')
     deviceDialog.classList.remove('hiddenmenu')
 })
+
+// Close dialog
 deviceDialog.firstElementChild.addEventListener('click', (e) => {
     deviceDialog.classList.add('hiddenmenu')
 })
 
-
+// Device buttons: change view mode and close dialog
 const computerButton = document.getElementById('computer-button')
 computerButton.addEventListener('click', (e) => {
     changeViewMode('static')
@@ -143,6 +167,8 @@ mobileButton.addEventListener('click', (e) => {
     deviceDialog.classList.add('hiddenmenu')
 })
 
+
+// Ask GeoViewer to change view mode and show the correct icon in menu
 function changeViewMode(newViewMode : ViewMode) {
     switch (newViewMode) {
         case 'static':
@@ -159,6 +185,7 @@ function changeViewMode(newViewMode : ViewMode) {
     }
 }
 
+// If GeoViewer automatically change view mode, correct menu icon accordingly
 myGeoViewer.onAutomaticViewModeChange = (viewMode) => {
     switch (viewMode) {
         case 'static':

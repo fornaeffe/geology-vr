@@ -194,6 +194,8 @@ export class Tile {
 
         // Execute custom function
         this.onDEMLoad();
+        // TODO catch errors
+        // TODO loading indicator
     }
 
     // Function that loads png from WMS
@@ -220,6 +222,9 @@ export class Tile {
         this.mesh.material.needsUpdate = true;
     }
 
+    // Switch texture
+    // geo = true --> geology map
+    // geo = false --> orthophoto
     changeTexture(geo: boolean) {
         this.applyTexture(geo ? this.GEOurl : this.OPurl);
 
@@ -230,6 +235,7 @@ export class Tile {
         this.mesh.material.needsUpdate = true;
     }
 
+    // Reload DEM and textures with new coordinates
     reset(x = this.x, y = this.y) {
         this.x = x;
         this.y = y;
