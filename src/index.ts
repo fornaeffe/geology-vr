@@ -168,6 +168,31 @@ GOButton.addEventListener('click', (e) => {
     locationDialog.classList.add('hiddenmenu')
 })
 
+const myLocationButton = document.getElementById('my-location')
+if ("geolocation" in navigator) {
+    myLocationButton.addEventListener('click', (e) => {
+        navigator.geolocation.getCurrentPosition(
+            geolocationSuccess,
+            geolocationError,
+            {
+                enableHighAccuracy: true
+            }
+        )
+    })
+} else {
+    myLocationButton.remove()
+}
+
+function geolocationSuccess(position : GeolocationPosition) {
+    const lat = position.coords.latitude
+    const lon = position.coords.longitude
+    coordInput.value = lat + ", " + lon
+}
+
+function geolocationError(error: GeolocationPositionError) {
+    console.error(error)
+}
+
 const computerButton = document.getElementById('computer-button')
 computerButton.addEventListener('click', (e) => {
     changeViewMode('static')
