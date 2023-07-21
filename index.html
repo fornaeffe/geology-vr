@@ -2,7 +2,10 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
 		<title>Geology in VR</title>
+		<link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined"
+      		rel="stylesheet">
 		<style>
 			body { 
 				margin: 0;
@@ -16,26 +19,115 @@
 			}
 			#menubutton {
 				cursor: pointer;
-				padding: .5em;
+				padding: 16px;
 			}
 			#innermenu {
-				padding: .5em;
+				padding-left: 16px;
+				padding-right: 16px;
 			}
 			.hiddenmenu {
 				display: none;
 			}
+
+			.menuitem {
+				padding-bottom: 16px;
+				cursor: pointer;
+			}
+
+			.clickable {
+				cursor: pointer;
+			}
+
+			.clickable:hover {
+				text-decoration: underline;
+			}
+
+			.md-18 { font-size: 18px; }
+			.md-24 { font-size: 24px; }
+			.md-36 { font-size: 36px; }
+			.md-48 { font-size: 48px; }
+
+			.dialog {
+				background-color: #ffffffaa;
+
+				padding: 16px;
+
+				font-size: 24px;
+
+				position: absolute;
+				top: 50vh;
+				left: 50vw;
+				margin-right: -50vw;
+				transform: translate(-50%, -50%);
+			}
+
+			.instruction {
+				padding: 16px;
+				color: #303030;
+			}
+
+			.small {
+				font-size: 16px;
+				padding: 8px;
+				color: #303030;
+			}
+
+			input {
+				font-size: 24px;
+				margin: 8px;
+			}
+
+			.row {
+				display: flex;
+				
+			}
+
+			
 		</style>
 	</head>
 	<body>
 		<div id="menu">
-			<div id="menubutton"><img src="assets/menu-button-of-three-horizontal-lines.png" alt="Menu"/></div>
+			<span id="menubutton" class="material-icons md-36">menu</span>
 			<div id="innermenu" class="hiddenmenu">
-				<label for="coords">Coordinates (e.g. 44.788, 10.336)</label><br />
-				<input type="text" id="coords" /><input type="button" value="GO" id="gobutton" /><br />
-				<input type="button" value="Switch map" id="switchmapbutton" /><br />
-				<a href="credits.html" >Credits</a>
+				<span class="material-icons-outlined md-36 menuitem" id="layers-button" aria-label="Layers">layers</span><br/>
+				<span class="material-icons-outlined md-36 menuitem" id="location-button" aria-label="Location">place</span><br/>
+				<span class="material-icons-outlined md-36 menuitem" id="device-button" aria-label="View mode">computer</span><br/>
+				<a href="credits.html" ><span class="material-icons-outlined md-36 menuitem" aria-label="Info and help">info</span></a><br/>
 			</div>
 		</div>
+		
+		<div id="layers-dialog" class="dialog hiddenmenu">
+			<div><span class="material-icons-outlined md-48 clickable" aria-label="Close">close</span></div>
+			<div class="instruction">Choose a texture:</div>
+			<div id="orthophoto" class="clickable">Orthophoto</div>
+			<div id="geo" class="clickable">Geological map</div>
+			<div class="small">(from <a href="https://geoportale.regione.emilia-romagna.it/servizi/servizi-ogc/elenco-capabilities-dei-servizi-wms">Geoportale Emilia Romagna</a>)</div>
+		</div>
+
+		<div id="location-dialog" class="dialog hiddenmenu">
+			<div><span class="material-icons-outlined md-48 clickable" aria-label="Close">close</span></div>
+			
+			<div class="instruction">Insert coordinates (copy from Google Maps)</div>
+			<div class="row">
+				<span class="material-icons-outlined md-48 clickable" id="my-location" aria-label="My location">my_location</span>
+				<input type="text" id="coords" /><input type="button" value="GO" id="gobutton"/>				
+			</div>
+			<div id="accuracy"></div>
+			<div class="small">
+				Works only in Emilia-Romagna mountains, for now...<br/>
+			</div>
+		</div>
+
+		<div id="device-dialog" class="dialog hiddenmenu">
+			<div><span class="material-icons-outlined md-48 clickable" aria-label="Close">close</span></div>
+			<div class="instruction">Choose controls type</div>
+			<div id="device-list" class="row">
+				<span class="material-icons-outlined md-48 clickable" id="computer-button" aria-label="Mouse or touch controls">computer</span>
+				<span class="material-icons-outlined md-48 clickable" id="mobile-button" aria-label="Device orientation controls">smartphone</span>
+			</div>
+		</div>
+
+
 		<script src="script/bundle.js"></script>
 	</body>
 </html>
