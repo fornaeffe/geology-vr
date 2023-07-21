@@ -37,7 +37,7 @@ export class GeoViewer {
     
         // Create light
         this.light = new THREE.DirectionalLight(0xffffff)
-        this.light.position.set( -1, 2, -1 )
+        this.light.position.set( 1, 2, 1 )
         this.scene.add( this.light );
 
         // Create bottomlight
@@ -79,7 +79,9 @@ export class GeoViewer {
 
         })
 
-        this.renderer.setAnimationLoop(() => {this.render()})
+        this.renderer.setAnimationLoop(() => this.render())
+
+        window.addEventListener('resize', () => this.resize());
 
         this.geo = false
     }
@@ -140,4 +142,16 @@ export class GeoViewer {
             this.camera.lookAt(0,0,0)
         
     }
+
+    resize() {			
+        const width = window.innerWidth * 0.99
+        const height = window.innerHeight * 0.99
+        const aspect_ratio = width / height
+        this.renderer.setSize( width, height )
+        this.camera.aspect = aspect_ratio
+        this.camera.updateProjectionMatrix()
+    }
+    
+
+    
 }
