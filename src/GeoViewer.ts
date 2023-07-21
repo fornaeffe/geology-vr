@@ -68,7 +68,7 @@ export class GeoViewer {
 
         // If device orientation changes, disable map controls
         // and tell the change to parents
-        this.myDOControls.onMovementDetected = () => {
+        this.myDOControls.onSensorDetected = () => {
             this.changeViewMode('device orientation')
             this.onAutomaticViewModeChange('device orientation')
         }
