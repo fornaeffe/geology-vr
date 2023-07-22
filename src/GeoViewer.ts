@@ -84,15 +84,9 @@ export class GeoViewer {
         // XR session initialization
         this.renderer.xr.addEventListener("sessionstart", (e) => {
 
-            const controllerModelFactory = new XRControllerModelFactory()
-
-            const controllerGrip0 = this.renderer.xr.getControllerGrip(0)
-            controllerGrip0.add( controllerModelFactory.createControllerModel( controllerGrip0 ) )
-            this.scene.add( controllerGrip0 )
-
-            const controllerGrip1 = this.renderer.xr.getControllerGrip(1)
-            controllerGrip1.add( controllerModelFactory.createControllerModel( controllerGrip1 ) )
-            this.scene.add( controllerGrip1 )
+            this.myVRcontrols.controllers.forEach((c) => {
+                this.scene.add(c.gripSpace)
+            })
 
             this.changeViewMode('VR')
         })

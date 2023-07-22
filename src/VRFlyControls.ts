@@ -1,9 +1,11 @@
 import * as THREE from 'three';
+import { ExtendedController } from './ExtendedController';
 
 // This class allows the user to fly around using controllers' thumbsticks
 export class VRFlyControls {
     // renderer that contains xr session
     renderer: THREE.WebGLRenderer 
+    controllers: ExtendedController[] = []
 
     // speed in m/s^2 when one thumbstick is 100% forward
     speedFactor = 30
@@ -17,6 +19,11 @@ export class VRFlyControls {
 
     constructor(renderer: THREE.WebGLRenderer) {
         this.renderer = renderer
+
+        // Create controllers
+        for (let i = 0; i < 2; i++) {
+            this.controllers[i] = new ExtendedController(renderer.xr, i)
+        }
     }
 
     // To be called inside animation loop
@@ -27,21 +34,21 @@ export class VRFlyControls {
         if (!session)
             return;
 
+        // Update controllers
+        this.controllers.forEach((c) => c.update())
         
         // Initialize velocity
         const velocity = new THREE.Vector3()
 
         // Get data from controllers
-        session.inputSources.forEach((myInputSource) => {
-            if (!myInputSource.gamepad)
+        this.controllers.forEach((c) => {
+            
+            if (!c.inputSource || !c.inputSource.gamepad || !c.inputSource.gamepad.axes[3])
                 return;
             
-            
-            if (!myInputSource.gamepad.axes[3])
-                return;
-            
-            velocity.z += myInputSource.gamepad.axes[3]            
+            console.log('Im here')
 
+            velocity.z += c.inputSource.gamepad.axes[3]
         })
 
         velocity.multiplyScalar(this.speedFactor * this.secondsPerFrame)
