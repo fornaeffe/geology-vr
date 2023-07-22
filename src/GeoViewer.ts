@@ -73,16 +73,15 @@ export class GeoViewer {
             this.onAutomaticViewModeChange('device orientation')
         }
 
+        // On squeeze click: change texture
+        // TODO: better controls for texture change in VR
+        this.renderer.xr.getController(0).addEventListener('squeezestart', (e) => {
+            this.changeTexture()
+        })
+
         // XR session initialization
         this.renderer.xr.addEventListener("sessionstart", (e) => {
-
             this.changeViewMode('VR')
-
-            // TODO: better controls for texture change in VR
-            this.renderer.xr.getController(0).addEventListener('squeezestart', (e) => {
-                this.changeTexture()
-            })
-
         })
 
         // Start animation
