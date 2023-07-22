@@ -3,6 +3,7 @@ import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
 import { Tile } from './Tile';
 import { VRFlyControls } from './VRFlyControls';
 import { DeviceOrientationControls } from './DeviceOrientationControls';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 
 
 export type ViewMode = 'static' | 'device orientation' | 'VR'
@@ -75,12 +76,24 @@ export class GeoViewer {
 
         // On squeeze click: change texture
         // TODO: better controls for texture change in VR
-        this.renderer.xr.getController(0).addEventListener('squeezestart', (e) => {
+        this.renderer.xr.getController(0).addEventListener('squeezestart', (e) => {           
+
             this.changeTexture()
         })
 
         // XR session initialization
         this.renderer.xr.addEventListener("sessionstart", (e) => {
+
+            const controllerModelFactory = new XRControllerModelFactory()
+
+            const controllerGrip0 = this.renderer.xr.getControllerGrip(0)
+            controllerGrip0.add( controllerModelFactory.createControllerModel( controllerGrip0 ) )
+            this.scene.add( controllerGrip0 )
+
+            const controllerGrip1 = this.renderer.xr.getControllerGrip(1)
+            controllerGrip1.add( controllerModelFactory.createControllerModel( controllerGrip1 ) )
+            this.scene.add( controllerGrip1 )
+
             this.changeViewMode('VR')
         })
 
