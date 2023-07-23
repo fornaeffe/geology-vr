@@ -74,6 +74,27 @@ export class GeoViewer {
             this.onAutomaticViewModeChange('device orientation')
         }
 
+        // VR controller event handlers
+        this.myVRcontrols.controllers.forEach((c) => {
+
+            const lineGeometry = new THREE.BufferGeometry()
+            lineGeometry.setFromPoints([ new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 0, - 3000 ) ]) //TODO: change hardcoded line length
+            const line = new THREE.Line(lineGeometry)
+            
+            c.addEventListener('touchstart', (e) => {
+                switch (e.data) {
+                    case 0:
+                        c.targetRaySpace.add(line)
+                }
+            })
+            c.addEventListener('touchend', (e) => {
+                switch (e.data) {
+                    case 0:
+                        c.targetRaySpace.remove(line)
+                }
+            })
+        })
+
         // On squeeze click: change texture
         // TODO: better controls for texture change in VR
         this.renderer.xr.getController(0).addEventListener('squeezestart', (e) => {           
@@ -85,7 +106,7 @@ export class GeoViewer {
         this.renderer.xr.addEventListener("sessionstart", (e) => {
 
             this.myVRcontrols.controllers.forEach((c) => {
-                this.scene.add(c.gripSpace)
+                this.scene.add(c.gripSpace, c.targetRaySpace)
             })
 
             this.changeViewMode('VR')

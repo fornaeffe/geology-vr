@@ -46,7 +46,6 @@ export class VRFlyControls {
             if (!c.inputSource || !c.inputSource.gamepad || !c.inputSource.gamepad.axes[3])
                 return;
             
-            console.log('Im here')
 
             velocity.z += c.inputSource.gamepad.axes[3]
         })

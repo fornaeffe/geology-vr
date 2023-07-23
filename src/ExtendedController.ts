@@ -2,6 +2,11 @@ import * as THREE from 'three';
 import { XRControllerModelFactory, XRControllerModel } from 'three/examples/jsm/webxr/XRControllerModelFactory';
 import { EventDispatcher } from './EventDispatcher';
 
+type ButtonState = {
+    pressed: boolean,
+    touched: boolean
+}
+
 export class ExtendedController extends EventDispatcher {
 
     targetRaySpace: THREE.XRTargetRaySpace
@@ -9,7 +14,7 @@ export class ExtendedController extends EventDispatcher {
     model: XRControllerModel
     inputSource?: XRInputSource
 
-    private buttonState: GamepadButton[] = []
+    private buttonState: ButtonState[] = []
 
     constructor(xr: THREE.WebXRManager, id: number) {
         super()
@@ -27,8 +32,14 @@ export class ExtendedController extends EventDispatcher {
 
             this.inputSource = e.data
 
-            if (e.data.gamepad)
-                Object.assign(this.buttonState, e.data.gamepad.buttons)
+            if (e.data.gamepad) {
+                e.data.gamepad.buttons.forEach((btn, i) => {
+                    this.buttonState[i] = {
+                        pressed: btn.pressed,
+                        touched: btn.touched
+                    }
+                });
+            }
         })
         this.targetRaySpace.addEventListener('disconnected', (e) => {
             this.inputSource = null
@@ -40,24 +51,27 @@ export class ExtendedController extends EventDispatcher {
         if (!this.inputSource || !this.inputSource.gamepad)
             return;
         
-        this.inputSource.gamepad.buttons.forEach((v, i) => {
+        this.inputSource.gamepad.buttons.forEach((btn, i) => {
             if (!this.buttonState[i])
-                return
+                return;
 
-            if (!this.buttonState[i].pressed && v.pressed)
+            if (!this.buttonState[i].pressed && btn.pressed)
                 this.dispatchEvent( { type: 'pressstart', data: i } )
             
-            if (this.buttonState[i].pressed && !v.pressed)
+            if (this.buttonState[i].pressed && !btn.pressed)
                 this.dispatchEvent( { type: 'pressend', data: i } )
             
-            if (!this.buttonState[i].touched && v.touched)
+            if (!this.buttonState[i].touched && btn.touched)
                 this.dispatchEvent( { type: 'touchstart', data: i } )
             
-            if (this.buttonState[i].touched && !v.touched)
+            if (this.buttonState[i].touched && !btn.touched)
                 this.dispatchEvent( { type: 'touchend', data: i } )
+            
+            this.buttonState[i].pressed = btn.pressed
+            this.buttonState[i].touched = btn.touched
+            
         })
 
-        Object.assign(this.buttonState, this.inputSource.gamepad.buttons)
     }
 }
 
