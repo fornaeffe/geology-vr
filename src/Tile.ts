@@ -8,7 +8,7 @@ export class Tile {
     height: number; // Tile height in m
     vertexResolution: number; // Distance from vertices in m
     textureResolution: number; // Texture pixel width in m
-    CRS: string;
+    // CRS: string;
     geometry: THREE.PlaneGeometry;
     material: THREE.MeshLambertMaterial;
     mesh: THREE.Mesh;

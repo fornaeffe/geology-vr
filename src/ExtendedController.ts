@@ -27,8 +27,10 @@ export class ExtendedController extends EventDispatcher {
         this.gripSpace.add(this.model)
 
         this.targetRaySpace.addEventListener('connected', (e) => {
-            if ( !e.data || !(e.data instanceof XRInputSource) ) 
+            if ( !e.data || !(e.data instanceof XRInputSource) ) {
+                console.error('Controller connected, but no input source')
                 return;
+            }
 
             this.inputSource = e.data
 
@@ -42,7 +44,7 @@ export class ExtendedController extends EventDispatcher {
             }
         })
         this.targetRaySpace.addEventListener('disconnected', (e) => {
-            this.inputSource = null
+            this.inputSource = undefined
             this.buttonState = []
         })
     }
@@ -52,8 +54,10 @@ export class ExtendedController extends EventDispatcher {
             return;
         
         this.inputSource.gamepad.buttons.forEach((btn, i) => {
-            if (!this.buttonState[i])
-                return;
+            if (!this.buttonState[i]){
+                console.error('Gamepad is present but buttonState not initialized when updating controller state')
+                return
+            }
 
             if (!this.buttonState[i].pressed && btn.pressed)
                 this.dispatchEvent( { type: 'pressstart', data: i } )

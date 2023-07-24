@@ -56,12 +56,16 @@ export class VRFlyControls {
         // MOVE OBSERVER
         // Get actual reference space
         const baseReferenceSpace = this.renderer.xr.getReferenceSpace()
+
+        if (!baseReferenceSpace){
+            console.error('No base reference space when moving observer')
+            return
+        }
+
         // Change reference space
         const myTransform = new XRRigidTransform(velocity.negate()) 
         const newReferenceSpace = baseReferenceSpace.getOffsetReferenceSpace(myTransform)
         this.renderer.xr.setReferenceSpace(newReferenceSpace)
-
-        return
 
     }
 

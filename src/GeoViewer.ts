@@ -172,6 +172,12 @@ export class GeoViewer {
         if (this.viewMode == 'VR') {
             // Move the plane below the observer
             const baseReferenceSpace = this.renderer.xr.getReferenceSpace()
+
+            if (!baseReferenceSpace){
+                console.error('No base reference space in resetting camera position')
+                return
+            }
+
             const myTransform = new XRRigidTransform({y: - y})
             const newReferenceSpace = baseReferenceSpace.getOffsetReferenceSpace(myTransform)
             this.renderer.xr.setReferenceSpace(newReferenceSpace)
