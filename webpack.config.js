@@ -4,7 +4,8 @@ module.exports = {
   mode: 'development',
   entry: {
     bundle: './src/index.ts',
-    wmsClientTest: './src/wmsClientTest.ts'
+    wmsClientTest: './src/wmsClientTest.ts',
+    ol: './src/ol.ts'
   },
   devtool: 'inline-source-map',
   module: {
