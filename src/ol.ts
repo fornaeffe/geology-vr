@@ -1,7 +1,17 @@
+
+import ImageWMS from 'ol/source/ImageWMS.js';
 import Map from 'ol/Map.js';
-import OSM from 'ol/source/OSM.js';
-import TileLayer from 'ol/layer/Tile.js';
 import View from 'ol/View.js';
+import {Image as ImageLayer} from 'ol/layer.js';
+
+import proj4 from 'proj4';
+import {register} from 'ol/proj/proj4.js';
+import { Projection } from 'ol/proj';
+
+// WGS 84 / UTM zone 32N projection definition for coordinates translation
+proj4.defs("EPSG:32632","+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs")
+
+register(proj4);
 
 const mapDiv = document.createElement('div')
 mapDiv.style.width = '1000px'
@@ -13,13 +23,21 @@ mapDiv.style.visibility = "hidden"
 const map = new Map({
   target: mapDiv,
   layers: [
-    new TileLayer({
-      source: new OSM(),
-    }),
+      new ImageLayer({
+          extent: [611400, 4918216, 613400, 4920216],
+          source: new ImageWMS({
+              url: 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb',
+              params: {'LAYERS': 'Agea2020_RGB'},
+              ratio: 1,
+              serverType: 'geoserver',
+              crossOrigin: 'Anonymous'
+          })
+      })
   ],
   view: new View({
-    center: [0, 0],
-    zoom: 2,
+      center: [612400, 4919216],
+      resolution: 2,
+      projection: "EPSG:32632"
   }),
 });
 

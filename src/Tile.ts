@@ -1,5 +1,18 @@
 import * as THREE from 'three';
 import { fromUrl } from "geotiff";
+import ImageWMS from 'ol/source/ImageWMS.js';
+import Map from 'ol/Map.js';
+import View from 'ol/View.js';
+import {Image as ImageLayer} from 'ol/layer.js';
+
+import proj4 from 'proj4';
+import {register} from 'ol/proj/proj4.js';
+import { Projection } from 'ol/proj';
+
+// WGS 84 / UTM zone 32N projection definition for coordinates translation
+proj4.defs("EPSG:32632","+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs")
+
+register(proj4);
 
 export class Tile {
     x: number; // Easting of tile center
@@ -23,8 +36,8 @@ export class Tile {
     constructor(
         x = 612400,
         y = 4919216,
-        width = 4000,
-        height = 3000,
+        width = 2000,
+        height = 2000,
         vertexResolution = 10,
         textureResolution = 2
     ) {
@@ -87,12 +100,7 @@ export class Tile {
 
 
         // Calculate bounding box
-        const BBox = [
-            this.x - this.width / 2,
-            this.y - this.height / 2,
-            this.x + this.width / 2,
-            this.y + this.height / 2
-        ];
+        const BBox = this.getBoundingBox();
         const BBoxDEM = [
             this.x - (this.width + this.vertexResolution) / 2,
             this.y - (this.height + this.vertexResolution) / 2,
@@ -150,19 +158,66 @@ export class Tile {
         // Load and apply DEM
         this.loadDEM(WCSurl);
 
-        // Load and apply ortophoto, and store its blob URL
-        this.loadWMS(WMSurl).then((url) => {
-            this.applyTexture(url);
-            this.OPurl = url;
+        // // Load and apply ortophoto, and store its blob URL
+        // this.loadWMS(WMSurl).then((url) => {
+        //     this.applyTexture(url);
+        //     this.OPurl = url;
+        // });
+
+        // // Load geology map, and store its blob URL
+        // this.loadWMS(WMSurlGEO).then((url) => {
+        //     this.GEOurl = url;
+        // });
+
+        const mapDiv = document.createElement('div')
+        mapDiv.style.width = this.textureWidth() + 'px'
+        mapDiv.style.height = this.textureHeight() + 'px'
+        document.body.appendChild(mapDiv)
+        mapDiv.style.position = "fixed"
+        mapDiv.style.visibility = "hidden"
+
+        const map = new Map({
+            target: mapDiv,
+            layers: [
+                new ImageLayer({
+                    extent: this.getBoundingBox(),
+                    source: new ImageWMS({
+                        url: 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb',
+                        params: {'LAYERS': 'Agea2020_RGB'},
+                        ratio: 1,
+                        serverType: 'geoserver',
+                        crossOrigin: 'Anonymous'
+                    })
+                })
+            ],
+            view: new View({
+                center: [this.x, this.y],
+                resolution: this.textureResolution,
+                projection: "EPSG:32632"
+            }),
         });
 
-        // Load geology map, and store its blob URL
-        this.loadWMS(WMSurlGEO).then((url) => {
-            this.GEOurl = url;
-        });
+        map.on('rendercomplete', (e) => {
+            const mapCanvas = mapDiv.getElementsByTagName('canvas')[0]
+
+            if (!mapCanvas) throw new TypeError('Unable to find mapCanvas')
+
+            const img = mapCanvas.toDataURL('image/png')
+
+            this.applyTexture(img)
+        })
 
         // TODO catch errors
         // TODO loading indicator
+    }
+
+    private getBoundingBox() {
+        return [
+            this.x - this.width / 2,
+            this.y - this.height / 2,
+            this.x + this.width / 2,
+            this.y + this.height / 2
+        ];
     }
 
     async loadDEM(WCSurl: string) {
