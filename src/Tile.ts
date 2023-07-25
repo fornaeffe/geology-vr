@@ -3,11 +3,12 @@ import { fromUrl } from "geotiff";
 import ImageWMS from 'ol/source/ImageWMS.js';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
-import {Image as ImageLayer} from 'ol/layer.js';
+import {Image as ImageLayer, Layer} from 'ol/layer.js';
 
 import proj4 from 'proj4';
 import {register} from 'ol/proj/proj4.js';
-import { Projection } from 'ol/proj';
+import Source from 'ol/source/Source';
+import ImageSource from 'ol/source/Image';
 
 // WGS 84 / UTM zone 32N projection definition for coordinates translation
 proj4.defs("EPSG:32632","+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs")
@@ -29,17 +30,20 @@ export class Tile {
     OPurl = ''; // Orthophoto blob URL
     GEOurl = ''; // Geology map blob URL
 
+    mapDiv: HTMLDivElement
+    map: Map
 
     // Customizable function that will be executed when DEM loading is complete
     onDEMLoad = () => { };
 
     constructor(
+        sources: ImageSource[],
         x = 612400,
         y = 4919216,
         width = 2000,
         height = 2000,
         vertexResolution = 10,
-        textureResolution = 2
+        textureResolution = 1
     ) {
         this.x = x;
         this.y = y;
@@ -60,7 +64,51 @@ export class Tile {
         // Create tile mesh
         this.mesh = new THREE.Mesh(this.geometry, this.material);
 
+        this.mapDiv = document.createElement('div')
+        this.mapDiv.style.width = this.textureWidth() + 'px'
+        this.mapDiv.style.height = this.textureHeight() + 'px'
+        document.body.appendChild(this.mapDiv)
+        this.mapDiv.style.position = "fixed"
+        this.mapDiv.style.visibility = "hidden"
+
+        this.map = new Map({
+            target: this.mapDiv,
+            view: new View({
+                center: [this.x, this.y],
+                resolution: this.textureResolution,
+                projection: "EPSG:32632"
+            }),
+        })
+
+        sources.forEach((s, i) => this.addSource(s, i == 0))
+
+        this.map.on('rendercomplete', (e) => {
+            const mapCanvas = this.mapDiv.getElementsByTagName('canvas')[0]
+
+            if (!mapCanvas) throw new TypeError('Unable to find mapCanvas')
+
+            const myTexture = new THREE.CanvasTexture(mapCanvas)
+
+            if (!(this.mesh.material instanceof THREE.MeshLambertMaterial))
+                throw new Error('Mesh material is not MeshLambertMaterial');
+
+            // Apply texture
+            this.mesh.material.map = myTexture;
+            this.mesh.material.needsUpdate = true;
+        })
+
         this.load();
+    }
+
+    addSource(source: ImageSource, visible = false) {
+        this.map.addLayer(
+            new ImageLayer({
+                extent: this.getBoundingBox(),
+                source: source,
+                visible: visible
+            })
+
+        )
     }
 
     // Number of plane segments along width
@@ -121,39 +169,39 @@ export class Tile {
             '&WIDTH=' + this.widthPoints() +
             '&HEIGHT=' + this.heightPoints();
 
-        // Compose WMS request URL for orthophoto
-        const WMSurl = 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb?' +
-            'SERVICE=WMS&' +
-            'VERSION=1.3.0' +
-            '&REQUEST=GetMap' +
-            '&BBOX=' + encodeURIComponent(BBox.join(',')) +
-            '&CRS=' + encodeURIComponent(CRS) +
-            '&WIDTH=' + this.textureWidth() +
-            '&HEIGHT=' + this.textureHeight() +
-            '&LAYERS=Agea2020_RGB' +
-            '&STYLES=' +
-            '&FORMAT=image%2Fpng' +
-            '&DPI=96' +
-            '&MAP_RESOLUTION=96' +
-            '&FORMAT_OPTIONS=dpi%3A96' +
-            '&TRANSPARENT=TRUE';
+        // // Compose WMS request URL for orthophoto
+        // const WMSurl = 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb?' +
+        //     'SERVICE=WMS&' +
+        //     'VERSION=1.3.0' +
+        //     '&REQUEST=GetMap' +
+        //     '&BBOX=' + encodeURIComponent(BBox.join(',')) +
+        //     '&CRS=' + encodeURIComponent(CRS) +
+        //     '&WIDTH=' + this.textureWidth() +
+        //     '&HEIGHT=' + this.textureHeight() +
+        //     '&LAYERS=Agea2020_RGB' +
+        //     '&STYLES=' +
+        //     '&FORMAT=image%2Fpng' +
+        //     '&DPI=96' +
+        //     '&MAP_RESOLUTION=96' +
+        //     '&FORMAT_OPTIONS=dpi%3A96' +
+        //     '&TRANSPARENT=TRUE';
 
-        // Compose WMS request URL for geology
-        const WMSurlGEO = 'https://servizigis.regione.emilia-romagna.it/wms/geologia10k?' +
-            'SERVICE=WMS&' +
-            'VERSION=1.3.0' +
-            '&REQUEST=GetMap' +
-            '&BBOX=' + encodeURIComponent(BBox.join(',')) +
-            '&CRS=' + encodeURIComponent(CRS) +
-            '&WIDTH=' + this.textureWidth() +
-            '&HEIGHT=' + this.textureHeight() +
-            '&LAYERS=Unita_geologiche_10K' +
-            '&STYLES=' +
-            '&FORMAT=image%2Fpng' +
-            '&DPI=96' +
-            '&MAP_RESOLUTION=96' +
-            '&FORMAT_OPTIONS=dpi%3A96' +
-            '&TRANSPARENT=TRUE';
+        // // Compose WMS request URL for geology
+        // const WMSurlGEO = 'https://servizigis.regione.emilia-romagna.it/wms/geologia10k?' +
+        //     'SERVICE=WMS&' +
+        //     'VERSION=1.3.0' +
+        //     '&REQUEST=GetMap' +
+        //     '&BBOX=' + encodeURIComponent(BBox.join(',')) +
+        //     '&CRS=' + encodeURIComponent(CRS) +
+        //     '&WIDTH=' + this.textureWidth() +
+        //     '&HEIGHT=' + this.textureHeight() +
+        //     '&LAYERS=Unita_geologiche_10K' +
+        //     '&STYLES=' +
+        //     '&FORMAT=image%2Fpng' +
+        //     '&DPI=96' +
+        //     '&MAP_RESOLUTION=96' +
+        //     '&FORMAT_OPTIONS=dpi%3A96' +
+        //     '&TRANSPARENT=TRUE';
 
         // Load and apply DEM
         this.loadDEM(WCSurl);
@@ -169,43 +217,7 @@ export class Tile {
         //     this.GEOurl = url;
         // });
 
-        const mapDiv = document.createElement('div')
-        mapDiv.style.width = this.textureWidth() + 'px'
-        mapDiv.style.height = this.textureHeight() + 'px'
-        document.body.appendChild(mapDiv)
-        mapDiv.style.position = "fixed"
-        mapDiv.style.visibility = "hidden"
-
-        const map = new Map({
-            target: mapDiv,
-            layers: [
-                new ImageLayer({
-                    extent: this.getBoundingBox(),
-                    source: new ImageWMS({
-                        url: 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb',
-                        params: {'LAYERS': 'Agea2020_RGB'},
-                        ratio: 1,
-                        serverType: 'geoserver',
-                        crossOrigin: 'Anonymous'
-                    })
-                })
-            ],
-            view: new View({
-                center: [this.x, this.y],
-                resolution: this.textureResolution,
-                projection: "EPSG:32632"
-            }),
-        });
-
-        map.on('rendercomplete', (e) => {
-            const mapCanvas = mapDiv.getElementsByTagName('canvas')[0]
-
-            if (!mapCanvas) throw new TypeError('Unable to find mapCanvas')
-
-            const img = mapCanvas.toDataURL('image/png')
-
-            this.applyTexture(img)
-        })
+        
 
         // TODO catch errors
         // TODO loading indicator
@@ -288,7 +300,10 @@ export class Tile {
     // geo = true --> geology map
     // geo = false --> orthophoto
     changeTexture(geo: boolean) {
-        this.applyTexture(geo ? this.GEOurl : this.OPurl);
+        // this.applyTexture(geo ? this.GEOurl : this.OPurl);
+
+        this.map.getAllLayers()[0].setVisible(!geo)
+        this.map.getAllLayers()[1].setVisible(geo)
 
         if (!(this.mesh.material instanceof THREE.MeshLambertMaterial))
             throw new Error('Mesh material is not MeshLambertMaterial');

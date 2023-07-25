@@ -4,12 +4,17 @@ import { Tile } from './Tile';
 import { VRFlyControls } from './VRFlyControls';
 import { DeviceOrientationControls } from './DeviceOrientationControls';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
+import Source from 'ol/source/Source';
+import ImageWMS from 'ol/source/ImageWMS';
+import ImageSource from 'ol/source/Image';
 
 
 export type ViewMode = 'static' | 'device orientation' | 'VR'
 
 export class GeoViewer {
     viewMode : ViewMode
+
+    sources: ImageSource[] = []
 
     renderer : THREE.WebGLRenderer
     scene : THREE.Scene
@@ -34,6 +39,28 @@ export class GeoViewer {
     constructor() {
         this.viewMode = 'static'
 
+        // OPEN LAYERS
+        this.sources.push(
+            new ImageWMS({
+                url: 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb',
+                params: {'LAYERS': 'Agea2020_RGB'},
+                ratio: 1,
+                serverType: 'geoserver',
+                crossOrigin: 'Anonymous'
+            }),
+            new ImageWMS({
+                url: 'https://servizigis.regione.emilia-romagna.it/wms/geologia10k',
+                params: {'LAYERS': 'Unita_geologiche_10K'},
+                ratio: 1,
+                serverType: 'geoserver',
+                crossOrigin: 'Anonymous'
+            })
+        )
+        
+
+
+        // THREE
+
         // Create the scene
         this.scene = new THREE.Scene()
         this.scene.background = new THREE.Color(0x87CEEB) // TODO: fix color
@@ -52,7 +79,7 @@ export class GeoViewer {
         this.scene.add( this.blight );
 
         // Create tile
-        this.myTile = new Tile()        
+        this.myTile = new Tile(this.sources)        
         // When the DEM is loaded, resets camera position
         this.myTile.onDEMLoad = () => this.resetCameraPosition()
         this.scene.add(this.myTile.mesh)
