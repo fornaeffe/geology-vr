@@ -1,13 +1,22 @@
 class Layer {
     name: string
+    title: string
     queryable: boolean
+    abstract: string
+    CRS: string[]
 
     constructor(
         name: string,
-        queryable: boolean
+        title: string,
+        queryable: boolean,
+        abstract: string,
+        CRS: string[]
     ) {
         this.name = name
+        this.title = title
         this.queryable = queryable
+        this.abstract = abstract
+        this.CRS = CRS || []
     }
 }
 
@@ -74,9 +83,13 @@ export class WMSClient {
         url.searchParams.append('REQUEST', 'GetCapabilities')
 
         // Fetch URL and parse response into a DOM
-        const response = await fetch(url)
+        const response = await fetch(
+            url,
+            {
+                cache: 'force-cache'
+            }
+        )
         const xml = await response.text()
-        document.body.innerHTML = xml
         const dom = new DOMParser().parseFromString(xml, 'text/xml')
 
         // Now get info from response using XPath
@@ -92,7 +105,7 @@ export class WMSClient {
             
         }
 
-        // Get service title
+        
         const titleXPresult = dom.evaluate(
             '/ns:WMS_Capabilities/ns:Service/ns:Title/text()',
             dom,
@@ -105,7 +118,7 @@ export class WMSClient {
         
         // Find all layers
         const layersXPresult = dom.evaluate(
-            '/ns:WMS_Capabilities/ns:Capability/ns:Layer/ns:Layer',
+            '//ns:Layer',
             dom,
             nsResolver,
             XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
@@ -120,7 +133,7 @@ export class WMSClient {
                 continue;
 
             // Layer name
-            const nameNodeXPresult = dom.evaluate(
+            const nameXPresult = dom.evaluate(
                 'ns:Name/text()',
                 item,
                 nsResolver,
@@ -128,7 +141,23 @@ export class WMSClient {
                 null
             )
 
-            const name = nameNodeXPresult.stringValue
+            if (!nameXPresult.stringValue){
+                console.log('Layer without name')
+                continue
+            }
+
+            const name = nameXPresult.stringValue
+
+            // Layer title
+            const titleXPresult = dom.evaluate(
+                'ns:Title/text()',
+                item,
+                nsResolver,
+                XPathResult.STRING_TYPE,
+                null
+            )
+
+            const title = titleXPresult.stringValue
 
             // Is queryable?
             const queryableXPresult = dom.evaluate(
@@ -140,9 +169,37 @@ export class WMSClient {
             )
 
             const queryable = queryableXPresult.stringValue == '1'
+
+            // Abstract
+            const abstractXPresult = dom.evaluate(
+                'ns:Abstract/text()',
+                item,
+                nsResolver,
+                XPathResult.STRING_TYPE,
+                null
+            )
+
+            const abstract = abstractXPresult.stringValue
+
+            //CRS
+            const crsXPresult = dom.evaluate(
+                'ns:CRS[text()]',
+                item,
+                nsResolver,
+                XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+                null
+            )
+            const crsArray : string[] = []
+            for (let j = 0; j < crsXPresult.snapshotLength; j++) {
+                const crs = crsXPresult.snapshotItem(j)?.firstChild?.nodeValue
+                if (!crs)
+                    continue;
+
+                crsArray.push(crs)
+            }
             
             // Create new layer
-            this.layers.push(new Layer(name, queryable))
+            this.layers.push(new Layer(name, title, queryable, abstract, crsArray))
         }
 
         console.log('Service: ' + this.title)
