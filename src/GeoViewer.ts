@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
+import { InteractiveGroup } from 'three/examples/jsm/interactive/InteractiveGroup.js'
+import { HTMLMesh } from 'three/examples/jsm/interactive/HTMLMesh.js'
 import { Tile } from './Tile';
 import { VRFlyControls } from './VRFlyControls';
 import { DeviceOrientationControls } from './DeviceOrientationControls';
-import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 
 
 export type ViewMode = 'static' | 'device orientation' | 'VR'
@@ -102,12 +103,43 @@ export class GeoViewer {
             this.changeTexture()
         })
 
+        // // // Interactive group
+        // const iGroup = new InteractiveGroup( this.renderer, this.camera)
+
+        const gui = document.createElement('div')
+        gui.innerText = 'Ciao!'
+        gui.style.color = 'black'
+        gui.style.background = '#cccccc'
+        gui.style.width = '150px'
+        gui.style.height = '150px'
+        document.body.appendChild(gui)
+        gui.style.position = 'fixed'
+        gui.style.visibility = 'hidden'
+
+  
+        const guiMesh = new HTMLMesh( gui )
+        // iGroup.add(guiMesh)
+
         // XR session initialization
         this.renderer.xr.addEventListener("sessionstart", (e) => {
 
             this.myVRcontrols.controllers.forEach((c) => {
                 this.scene.add(c.gripSpace, c.targetRaySpace)
             })
+
+            const c0space = this.myVRcontrols.controllers[0].gripSpace
+
+            guiMesh.position.x = c0space.position.x + .15
+            guiMesh.position.y = c0space.position.y
+            guiMesh.position.z = c0space.position.z
+            guiMesh.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI/2)
+            c0space.add(guiMesh)
+
+            this.myVRcontrols.controllers[0].addEventListener('pressstart', (e) => {
+                if (e.data == 3)
+                    guiMesh.visible = !guiMesh.visible
+            })
+
 
             this.changeViewMode('VR')
         })
