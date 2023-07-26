@@ -94,6 +94,31 @@ export class GeoViewer {
                         c.targetRaySpace.remove(line)
                 }
             })
+            c.addEventListener('pressend', (e) => {
+                switch (e.data) {
+                    case 0:
+                        const raycaster = new THREE.Raycaster()
+                        raycaster.ray.origin.setFromMatrixPosition(c.targetRaySpace.matrixWorld)
+                        raycaster.ray.direction.set(0,0,-1).applyMatrix4( new THREE.Matrix4().identity().extractRotation(c.targetRaySpace.matrixWorld) )
+
+                        const intersections = raycaster.intersectObject(this.myTile.mesh)
+
+                        if (intersections.length < 1)
+                            return;
+
+                        
+
+                        let str = 'Click on terrain detected'
+
+                        const uv = intersections[0].uv
+
+                        if (uv)
+                            str += ' at<br />x = ' + uv.x + '<br />y = ' + uv.y
+                        
+                        gui.innerHTML = str
+
+                }
+            })
         })
 
         // On squeeze click: change texture
@@ -136,7 +161,7 @@ export class GeoViewer {
             c0space.add(guiMesh)
 
             this.myVRcontrols.controllers[0].addEventListener('pressstart', (e) => {
-                if (e.data == 3)
+                if (e.data == 4)
                     guiMesh.visible = !guiMesh.visible
             })
 
