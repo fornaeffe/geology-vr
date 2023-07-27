@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
+import { InteractiveGroup } from 'three/examples/jsm/interactive/InteractiveGroup.js'
+import { HTMLMesh } from 'three/examples/jsm/interactive/HTMLMesh.js'
 import { Tile } from './Tile';
 import { VRFlyControls } from './VRFlyControls';
 import { DeviceOrientationControls } from './DeviceOrientationControls';
@@ -27,11 +29,19 @@ export class GeoViewer {
     // TODO: remove this when better UI for VR will be in place
     geo : boolean
 
+    // GUI mesh
+    guiDOMelement : HTMLElement
+    guiMesh? : HTMLMesh
+
     // Function (to be passed) that will be executed when a view mode change is triggered inside this class (and not by user input or UI logic)
     onAutomaticViewModeChange = (v : ViewMode) => {}
 
-    constructor() {
+    constructor(
+            guiDOMelement : HTMLElement = document.createElement('div')
+        ) {
         this.viewMode = 'static'
+
+        this.guiDOMelement = guiDOMelement
 
         // Create the scene
         this.scene = new THREE.Scene()
@@ -73,15 +83,96 @@ export class GeoViewer {
             this.onAutomaticViewModeChange('device orientation')
         }
 
+        // VR controller event handlers
+        this.myVRcontrols.controllers.forEach((c) => {
+
+            const lineGeometry = new THREE.BufferGeometry()
+            lineGeometry.setFromPoints([ new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 0, - 3000 ) ]) //TODO: change hardcoded line length
+            const lineMaterial = new THREE.LineBasicMaterial()
+            lineMaterial.opacity = .5
+            const line = new THREE.Line(lineGeometry, lineMaterial)
+            
+            
+            c.addEventListener('touchstart', (e) => {
+                switch (e.data) {
+                    case 0:
+                        c.targetRaySpace.add(line)
+                }
+            })
+            c.addEventListener('touchend', (e) => {
+                switch (e.data) {
+                    case 0:
+                        c.targetRaySpace.remove(line)
+                }
+            })
+            c.addEventListener('pressstart', (e) => {
+                switch (e.data) {
+                    case 4:
+                        if (this.guiMesh) {
+                            console.log('Rimuovo GUI')
+                            this.removeGui()
+                        } else {
+                            console.log('Aggiungo GUI')
+                            this.addGui(this.guiDOMelement)
+                        }
+
+                }
+            })
+            c.addEventListener('pressend', (e) => {
+                switch (e.data) {
+                    case 0:
+                        const raycaster = new THREE.Raycaster()
+                        raycaster.ray.origin.setFromMatrixPosition(c.targetRaySpace.matrixWorld)
+                        raycaster.ray.direction.set(0,0,-1).applyMatrix4( new THREE.Matrix4().identity().extractRotation(c.targetRaySpace.matrixWorld) )
+
+                        const intersections = raycaster.intersectObjects(this.guiMesh ? [this.myTile.mesh, this.guiMesh] : [this.myTile.mesh])
+
+                        if (intersections.length < 1)
+                            return;
+
+                        const intersection = intersections[0]
+
+                        const uv = intersection.uv
+
+                        if (intersection.object === this.guiMesh && uv) {
+                            this.guiMesh.dispatchEvent({type: 'click', data: new THREE.Vector2(uv.x, 1-uv.y)})
+                        }
+
+                        // TODO insert code here
+
+                }
+            })
+        })
+
         // On squeeze click: change texture
         // TODO: better controls for texture change in VR
-        this.renderer.xr.getController(0).addEventListener('squeezestart', (e) => {
+        this.renderer.xr.getController(0).addEventListener('squeezestart', (e) => {           
+
             this.changeTexture()
+        })
+
+        // const guiMesh = new HTMLMesh( vrGUI )
+
+        // const c0space = this.myVRcontrols.controllers[0].gripSpace
+
+        // guiMesh.position.x = c0space.position.x + .25
+        // guiMesh.position.y = c0space.position.y
+        // guiMesh.position.z = c0space.position.z
+        // guiMesh.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI/2)
+        // c0space.add(guiMesh)
+
+        this.myVRcontrols.controllers.forEach((c) => {
+            this.scene.add(c.gripSpace, c.targetRaySpace)
         })
 
         // XR session initialization
         this.renderer.xr.addEventListener("sessionstart", (e) => {
+
             this.changeViewMode('VR')
+        })
+        this.renderer.xr.addEventListener('sessionend', (e) => {
+            this.changeViewMode('static')
+            this.onAutomaticViewModeChange('static')
         })
 
         // Start animation
@@ -93,6 +184,8 @@ export class GeoViewer {
         // Starts with orthophoto
         // TODO: remove this when no longer needed by VR
         this.geo = false
+
+        this.addGui(this.guiDOMelement)
     }
 
     render() {
@@ -144,6 +237,12 @@ export class GeoViewer {
         if (this.viewMode == 'VR') {
             // Move the plane below the observer
             const baseReferenceSpace = this.renderer.xr.getReferenceSpace()
+
+            if (!baseReferenceSpace){
+                console.error('No base reference space in resetting camera position')
+                return
+            }
+
             const myTransform = new XRRigidTransform({y: - y})
             const newReferenceSpace = baseReferenceSpace.getOffsetReferenceSpace(myTransform)
             this.renderer.xr.setReferenceSpace(newReferenceSpace)
@@ -165,7 +264,25 @@ export class GeoViewer {
         this.camera.aspect = aspect_ratio
         this.camera.updateProjectionMatrix()
     }
-    
 
+    addGui(htmlElement : HTMLElement) {
+        const c0 = this.myVRcontrols.controllers[0].gripSpace
+        this.guiMesh = new HTMLMesh(htmlElement)
+        // this.guiMesh.position.copy(c0.position)
+        // this.guiMesh.quaternion.copy(c0.quaternion)
+        this.guiMesh.translateX(0.2)
+        this.guiMesh.rotateX(- Math.PI / 2)
+        c0.add(this.guiMesh)
+
+    }
+
+    removeGui() {
+        if (!this.guiMesh)
+            return;
+
+        this.myVRcontrols.controllers[0].gripSpace.remove(this.guiMesh)
+        this.guiMesh.dispose()
+        this.guiMesh = undefined
+    }
     
 }

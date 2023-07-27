@@ -2,9 +2,36 @@ import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import proj4 from 'proj4';
 import { GeoViewer, ViewMode } from './GeoViewer';
 
+function safeGet(id : string) {
+    const element = document.getElementById(id)
+
+    if (!element)
+        throw new TypeError(id + ' not found in DOM')
+    
+    return element
+}
+
+function safeGetInput(id : string) {
+    const element = document.getElementById(id)
+
+    if (!(element instanceof HTMLInputElement))
+        throw new TypeError(id + ' is not HTMLInputElement')
+    
+    return element
+}
+
 
 // Initialize the viewer
-const myGeoViewer = new GeoViewer()
+const myGeoViewer = new GeoViewer(safeGet('vr-gui'))
+
+// VR GUI
+safeGet('vr-orthophoto').addEventListener('click', (e) => {
+    myGeoViewer.changeTexture(false)
+})
+safeGet('vr-geo').addEventListener('click', (e) => {
+    myGeoViewer.changeTexture(true)
+})
+
 
 // Append the renderer and the VR button to the page
 document.body.appendChild( myGeoViewer.renderer.domElement )
@@ -13,19 +40,21 @@ document.body.appendChild( myGeoViewer.renderer.domElement )
 // TODO: find a nice icon for VR Button
 const myVRButton = VRButton.createButton( myGeoViewer.renderer )
 myVRButton.style.position = 'static'
-document.getElementById('device-list').appendChild( myVRButton )
+
 
 // Menu
-const menuButton = document.getElementById("menubutton")
-const innerMenu = document.getElementById("innermenu")
+const menuButton = safeGet("menubutton")
+const innerMenu = safeGet("innermenu")
+
+
 menuButton.addEventListener('click', (e) => {
     innerMenu.classList.toggle('hiddenmenu')
 })
 
 // TODO rewrite this all with React, or similar...
 // ------------------------- Layers dialog ---------------------------------
-const layersButton = document.getElementById('layers-button')
-const layersDialog = document.getElementById('layers-dialog')
+const layersButton = safeGet('layers-button')
+const layersDialog = safeGet('layers-dialog')
 
 // Open dialog
 layersButton.addEventListener('click', (e) => {
@@ -34,29 +63,29 @@ layersButton.addEventListener('click', (e) => {
 })
 
 // Close dialog
-layersDialog.firstElementChild.addEventListener('click', (e) => {
+layersDialog.firstElementChild?.addEventListener('click', (e) => {
     layersDialog.classList.add('hiddenmenu')
 })
 
 // TODO add more texture layers
 // Available textures
-document.getElementById('orthophoto').addEventListener('click', (e) => {
+document.getElementById('orthophoto')?.addEventListener('click', (e) => {
     myGeoViewer.changeTexture(false)
 })
-document.getElementById('geo').addEventListener('click', (e) => {
+document.getElementById('geo')?.addEventListener('click', (e) => {
     myGeoViewer.changeTexture(true)
 })
 
 
 // ---------------------------- Location dialog ------------------------------
 
-let geolocationWatcher : number // Geolocation watcher ID
+let geolocationWatcher : number | undefined // Geolocation watcher ID
 
-const locationButton = document.getElementById('location-button')
-const locationDialog = document.getElementById('location-dialog')
-const coordInput = document.getElementById('coords') as HTMLInputElement
-const GOButton = document.getElementById("gobutton")
-const accuracyDiv = document.getElementById('accuracy')
+const locationButton = safeGet('location-button')
+const locationDialog = safeGet('location-dialog')
+const coordInput = safeGet('coords') as HTMLInputElement
+const GOButton = safeGet("gobutton")
+const accuracyDiv = safeGet('accuracy')
 
 // Open dialog
 locationButton.addEventListener('click', (e) => {
@@ -65,13 +94,13 @@ locationButton.addEventListener('click', (e) => {
 })
 
 // Close dialog
-locationDialog.firstElementChild.addEventListener('click', (e) => {
+locationDialog.firstElementChild?.addEventListener('click', (e) => {
     locationDialog.classList.add('hiddenmenu')
 
     // Stop geolocation watcher if started
     if (geolocationWatcher) {
         navigator.geolocation.clearWatch(geolocationWatcher)
-        geolocationWatcher = null
+        geolocationWatcher = undefined
     }
 
     // Clear input and accuracy values
@@ -97,10 +126,20 @@ GOButton.addEventListener('click', (e) => {
     
     // If all ok, close the dialog
     locationDialog.classList.add('hiddenmenu')
+
+    // Stop geolocation watcher if started
+    if (geolocationWatcher) {
+        navigator.geolocation.clearWatch(geolocationWatcher)
+        geolocationWatcher = undefined
+    }
+
+    // Clear input and accuracy values
+    coordInput.value = ""
+    accuracyDiv.innerText = ""
 })
 
 // My location button
-const myLocationButton = document.getElementById('my-location')
+const myLocationButton = safeGet('my-location')
 if ("geolocation" in navigator) {
     myLocationButton.addEventListener('click', (e) => {
 
@@ -141,8 +180,11 @@ function geolocationError(error: GeolocationPositionError) {
 
 
 // --------------- Device dialog ----------------------
-const deviceButton = document.getElementById('device-button')
-const deviceDialog = document.getElementById('device-dialog')
+const deviceButton = safeGet('device-button')
+const deviceDialog = safeGet('device-dialog')
+const deviceList = safeGet('device-list')
+
+deviceList.appendChild( myVRButton )
 
 // Open dialog
 deviceButton.addEventListener('click', (e) => {
@@ -151,17 +193,17 @@ deviceButton.addEventListener('click', (e) => {
 })
 
 // Close dialog
-deviceDialog.firstElementChild.addEventListener('click', (e) => {
+deviceDialog.firstElementChild?.addEventListener('click', (e) => {
     deviceDialog.classList.add('hiddenmenu')
 })
 
 // Device buttons: change view mode and close dialog
-const computerButton = document.getElementById('computer-button')
+const computerButton = safeGet('computer-button')
 computerButton.addEventListener('click', (e) => {
     changeViewMode('static')
     deviceDialog.classList.add('hiddenmenu')
 })
-const mobileButton = document.getElementById('mobile-button')
+const mobileButton = safeGet('mobile-button')
 mobileButton.addEventListener('click', (e) => {
     changeViewMode('device orientation')
     deviceDialog.classList.add('hiddenmenu')

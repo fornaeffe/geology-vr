@@ -8,7 +8,7 @@ export class Tile {
     height: number; // Tile height in m
     vertexResolution: number; // Distance from vertices in m
     textureResolution: number; // Texture pixel width in m
-    CRS: string;
+    // CRS: string;
     geometry: THREE.PlaneGeometry;
     material: THREE.MeshLambertMaterial;
     mesh: THREE.Mesh;
@@ -166,6 +166,8 @@ export class Tile {
     }
 
     async loadDEM(WCSurl: string) {
+        // TODO: cache!
+
         // Fetch WCS GeoTIFF and read the raster data
         const myGeoTIFF = await fromUrl(WCSurl, { allowFullFile: true });
         const myGeoTIFFImage = await myGeoTIFF.getImage();
@@ -201,7 +203,12 @@ export class Tile {
     // Function that loads png from WMS
     async loadWMS(url: string): Promise<string> {
         // Fetch WMS for orthophoto
-        const myWMSResponse = await fetch(url);
+        const myWMSResponse = await fetch(
+            url,
+            {
+                cache: 'force-cache'
+            }
+        )
         const myBlob = await myWMSResponse.blob();
         const myBlobURL = URL.createObjectURL(myBlob);
         return myBlobURL;
