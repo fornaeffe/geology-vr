@@ -36,7 +36,9 @@ export class GeoViewer {
     // Function (to be passed) that will be executed when a view mode change is triggered inside this class (and not by user input or UI logic)
     onAutomaticViewModeChange = (v : ViewMode) => {}
 
-    constructor(guiDOMelement : HTMLElement = document.createElement('div')) {
+    constructor(
+            guiDOMelement : HTMLElement = document.createElement('div')
+        ) {
         this.viewMode = 'static'
 
         this.guiDOMelement = guiDOMelement
@@ -86,7 +88,10 @@ export class GeoViewer {
 
             const lineGeometry = new THREE.BufferGeometry()
             lineGeometry.setFromPoints([ new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 0, - 3000 ) ]) //TODO: change hardcoded line length
-            const line = new THREE.Line(lineGeometry)
+            const lineMaterial = new THREE.LineBasicMaterial()
+            lineMaterial.opacity = .5
+            const line = new THREE.Line(lineGeometry, lineMaterial)
+            
             
             c.addEventListener('touchstart', (e) => {
                 switch (e.data) {
@@ -179,6 +184,8 @@ export class GeoViewer {
         // Starts with orthophoto
         // TODO: remove this when no longer needed by VR
         this.geo = false
+
+        this.addGui(this.guiDOMelement)
     }
 
     render() {

@@ -85,7 +85,23 @@
 			#vr-gui {
 				position: fixed;
 				visibility: hidden;
-				background-color: #ffffff80;
+			}
+
+			#vr-intro {
+				background-color: #000000aa;
+				border: 1px solid #000000;
+				color: #cccccc;
+				border-radius: 16px;
+				padding: 16px;
+			}
+
+			.vr-button {
+				background-color: #000000aa;
+				border: 1px solid #000000;
+				color: #cccccc;
+				border-radius: 16px;
+				margin: 16px;
+				padding: 16px;
 			}
 
 			
@@ -93,9 +109,16 @@
 	</head>
 	<body>
 		<div id="vr-gui">
-			Ciao!
-			<div id="vr-orthophoto">Orthophoto</div>
-			<div id="vr-geo">Geological map</div>
+			<div id="vr-intro">
+				Thumbsticks: fly<br />
+				Select: click on buttons<br />
+				Squeeze: change map texture<br />
+				X button: open/close dialog<br />
+				<br />
+				Press "X" to close me
+			</div>
+			<div id="vr-orthophoto" class="vr-button">Orthophoto</div>
+			<div id="vr-geo" class="vr-button">Geological map</div>
 		</div>
 		<div id="menu">
 			<span id="menubutton" class="material-icons md-36">menu</span>
