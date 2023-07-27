@@ -29,10 +29,11 @@ export class GeoViewer {
     // TODO: remove this when better UI for VR will be in place
     geo : boolean
 
+
     // Function (to be passed) that will be executed when a view mode change is triggered inside this class (and not by user input or UI logic)
     onAutomaticViewModeChange = (v : ViewMode) => {}
 
-    constructor() {
+    constructor(vrGUI : HTMLElement = document.createElement('div')) {
         this.viewMode = 'static'
 
         // Create the scene
@@ -94,6 +95,12 @@ export class GeoViewer {
                         c.targetRaySpace.remove(line)
                 }
             })
+            c.addEventListener('pressstart', (e) => {
+                switch (e.data) {
+                    case 4:
+                        guiMesh.visible = !guiMesh.visible
+                }
+            })
             c.addEventListener('pressend', (e) => {
                 switch (e.data) {
                     case 0:
@@ -101,21 +108,23 @@ export class GeoViewer {
                         raycaster.ray.origin.setFromMatrixPosition(c.targetRaySpace.matrixWorld)
                         raycaster.ray.direction.set(0,0,-1).applyMatrix4( new THREE.Matrix4().identity().extractRotation(c.targetRaySpace.matrixWorld) )
 
-                        const intersections = raycaster.intersectObject(this.myTile.mesh)
+                        const intersections = raycaster.intersectObjects([this.myTile.mesh, guiMesh])
 
                         if (intersections.length < 1)
                             return;
 
+                        const intersection = intersections[0]
+
+                        const uv = intersection.uv
+
+                        if (intersection.object === guiMesh && uv) {
+                            guiMesh.dispatchEvent({type: 'click', data: new THREE.Vector2(uv.x, 1 - uv.y)})
+                        }
+
+                        // if (uv)
+                        //     str += ' at<br />x = ' + uv.x + '<br />y = ' + uv.y
                         
-
-                        let str = 'Click on terrain detected'
-
-                        const uv = intersections[0].uv
-
-                        if (uv)
-                            str += ' at<br />x = ' + uv.x + '<br />y = ' + uv.y
-                        
-                        gui.innerHTML = str
+                        // TODO code to getfeaturerequest
 
                 }
             })
@@ -128,45 +137,39 @@ export class GeoViewer {
             this.changeTexture()
         })
 
-        // // // Interactive group
-        // const iGroup = new InteractiveGroup( this.renderer, this.camera)
-
-        const gui = document.createElement('div')
-        gui.innerText = 'Ciao!'
-        gui.style.color = 'black'
-        gui.style.background = '#cccccc'
-        gui.style.width = '150px'
-        gui.style.height = '150px'
-        document.body.appendChild(gui)
-        gui.style.position = 'fixed'
-        gui.style.visibility = 'hidden'
-
+        // const gui = document.createElement('div')
+        // gui.innerText = 'Ciao!'
+        // gui.style.color = 'black'
+        // gui.style.background = '#cccccc'
+        // gui.style.width = '150px'
+        // gui.style.height = '150px'
+        // document.body.appendChild(gui)
+        // gui.style.position = 'fixed'
+        // gui.style.visibility = 'hidden'
+        
   
-        const guiMesh = new HTMLMesh( gui )
-        // iGroup.add(guiMesh)
+        const guiMesh = new HTMLMesh( vrGUI )
+
+        const c0space = this.myVRcontrols.controllers[0].gripSpace
+
+        guiMesh.position.x = c0space.position.x + .25
+        guiMesh.position.y = c0space.position.y
+        guiMesh.position.z = c0space.position.z
+        guiMesh.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI/2)
+        c0space.add(guiMesh)
+
+        this.myVRcontrols.controllers.forEach((c) => {
+            this.scene.add(c.gripSpace, c.targetRaySpace)
+        })
 
         // XR session initialization
         this.renderer.xr.addEventListener("sessionstart", (e) => {
 
-            this.myVRcontrols.controllers.forEach((c) => {
-                this.scene.add(c.gripSpace, c.targetRaySpace)
-            })
-
-            const c0space = this.myVRcontrols.controllers[0].gripSpace
-
-            guiMesh.position.x = c0space.position.x + .15
-            guiMesh.position.y = c0space.position.y
-            guiMesh.position.z = c0space.position.z
-            guiMesh.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI/2)
-            c0space.add(guiMesh)
-
-            this.myVRcontrols.controllers[0].addEventListener('pressstart', (e) => {
-                if (e.data == 4)
-                    guiMesh.visible = !guiMesh.visible
-            })
-
-
             this.changeViewMode('VR')
+        })
+        this.renderer.xr.addEventListener('sessionend', (e) => {
+            this.changeViewMode('static')
+            this.onAutomaticViewModeChange('static')
         })
 
         // Start animation
