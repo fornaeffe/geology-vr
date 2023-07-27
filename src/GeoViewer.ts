@@ -29,12 +29,17 @@ export class GeoViewer {
     // TODO: remove this when better UI for VR will be in place
     geo : boolean
 
+    // GUI mesh
+    guiDOMelement : HTMLElement
+    guiMesh? : HTMLMesh
 
     // Function (to be passed) that will be executed when a view mode change is triggered inside this class (and not by user input or UI logic)
     onAutomaticViewModeChange = (v : ViewMode) => {}
 
-    constructor(vrGUI : HTMLElement = document.createElement('div')) {
+    constructor(guiDOMelement : HTMLElement = document.createElement('div')) {
         this.viewMode = 'static'
+
+        this.guiDOMelement = guiDOMelement
 
         // Create the scene
         this.scene = new THREE.Scene()
@@ -98,7 +103,14 @@ export class GeoViewer {
             c.addEventListener('pressstart', (e) => {
                 switch (e.data) {
                     case 4:
-                        guiMesh.visible = !guiMesh.visible
+                        if (this.guiMesh) {
+                            console.log('Rimuovo GUI')
+                            this.removeGui()
+                        } else {
+                            console.log('Aggiungo GUI')
+                            this.addGui(this.guiDOMelement)
+                        }
+
                 }
             })
             c.addEventListener('pressend', (e) => {
@@ -108,7 +120,7 @@ export class GeoViewer {
                         raycaster.ray.origin.setFromMatrixPosition(c.targetRaySpace.matrixWorld)
                         raycaster.ray.direction.set(0,0,-1).applyMatrix4( new THREE.Matrix4().identity().extractRotation(c.targetRaySpace.matrixWorld) )
 
-                        const intersections = raycaster.intersectObjects([this.myTile.mesh, guiMesh])
+                        const intersections = raycaster.intersectObjects(this.guiMesh ? [this.myTile.mesh, this.guiMesh] : [this.myTile.mesh])
 
                         if (intersections.length < 1)
                             return;
@@ -117,14 +129,11 @@ export class GeoViewer {
 
                         const uv = intersection.uv
 
-                        if (intersection.object === guiMesh && uv) {
-                            guiMesh.dispatchEvent({type: 'click', data: new THREE.Vector2(uv.x, 1 - uv.y)})
+                        if (intersection.object === this.guiMesh && uv) {
+                            this.guiMesh.dispatchEvent({type: 'click', data: new THREE.Vector2(uv.x, 1-uv.y)})
                         }
 
-                        // if (uv)
-                        //     str += ' at<br />x = ' + uv.x + '<br />y = ' + uv.y
-                        
-                        // TODO code to getfeaturerequest
+                        // TODO insert code here
 
                 }
             })
@@ -137,26 +146,15 @@ export class GeoViewer {
             this.changeTexture()
         })
 
-        // const gui = document.createElement('div')
-        // gui.innerText = 'Ciao!'
-        // gui.style.color = 'black'
-        // gui.style.background = '#cccccc'
-        // gui.style.width = '150px'
-        // gui.style.height = '150px'
-        // document.body.appendChild(gui)
-        // gui.style.position = 'fixed'
-        // gui.style.visibility = 'hidden'
-        
-  
-        const guiMesh = new HTMLMesh( vrGUI )
+        // const guiMesh = new HTMLMesh( vrGUI )
 
-        const c0space = this.myVRcontrols.controllers[0].gripSpace
+        // const c0space = this.myVRcontrols.controllers[0].gripSpace
 
-        guiMesh.position.x = c0space.position.x + .25
-        guiMesh.position.y = c0space.position.y
-        guiMesh.position.z = c0space.position.z
-        guiMesh.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI/2)
-        c0space.add(guiMesh)
+        // guiMesh.position.x = c0space.position.x + .25
+        // guiMesh.position.y = c0space.position.y
+        // guiMesh.position.z = c0space.position.z
+        // guiMesh.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI/2)
+        // c0space.add(guiMesh)
 
         this.myVRcontrols.controllers.forEach((c) => {
             this.scene.add(c.gripSpace, c.targetRaySpace)
@@ -259,7 +257,25 @@ export class GeoViewer {
         this.camera.aspect = aspect_ratio
         this.camera.updateProjectionMatrix()
     }
-    
 
+    addGui(htmlElement : HTMLElement) {
+        const c0 = this.myVRcontrols.controllers[0].gripSpace
+        this.guiMesh = new HTMLMesh(htmlElement)
+        // this.guiMesh.position.copy(c0.position)
+        // this.guiMesh.quaternion.copy(c0.quaternion)
+        this.guiMesh.translateX(0.2)
+        this.guiMesh.rotateX(- Math.PI / 2)
+        c0.add(this.guiMesh)
+
+    }
+
+    removeGui() {
+        if (!this.guiMesh)
+            return;
+
+        this.myVRcontrols.controllers[0].gripSpace.remove(this.guiMesh)
+        this.guiMesh.dispose()
+        this.guiMesh = undefined
+    }
     
 }

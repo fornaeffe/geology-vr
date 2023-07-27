@@ -24,9 +24,14 @@ function safeGetInput(id : string) {
 // Initialize the viewer
 const myGeoViewer = new GeoViewer(safeGet('vr-gui'))
 
-safeGet('clickme').addEventListener('click', (e) => {
-    safeGet('response').innerText = 'clicked at ' + e.offsetX + ' ' + e.offsetY
+// VR GUI
+safeGet('vr-orthophoto').addEventListener('click', (e) => {
+    myGeoViewer.changeTexture(false)
 })
+safeGet('vr-geo').addEventListener('click', (e) => {
+    myGeoViewer.changeTexture(true)
+})
+
 
 // Append the renderer and the VR button to the page
 document.body.appendChild( myGeoViewer.renderer.domElement )
