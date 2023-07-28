@@ -14,6 +14,25 @@ client.addEventListener('connected', () => {
     ).then((mapURL) => {
         mapImg.src = mapURL
         document.body.appendChild(mapImg)
+        return client.getFeatureInfo(
+            '2',
+            [10.403135325028, 44.41458669139024, 10.4032404590122, 44.41466178799623],
+            'CRS:84',
+            2,
+            2,
+            0,
+            1
+        )
+    }).then((responseHTML) => {
+        const doc = new DOMParser().parseFromString(responseHTML, 'text/html')
+        const children = doc.children
+        for (let i = 0; i < children.length; i++) {
+            const item = children.item(i)
+            if (!item)
+                continue;
+            
+            document.body.append(item)
+        }
     })
 })
 

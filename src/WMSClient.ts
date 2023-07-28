@@ -215,6 +215,7 @@ export class WMSClient extends EventDispatcher {
         this.dispatchEvent({type: 'connected', data: null})        
     }
 
+    // TODO allow multiple layers
     async getMap(
         layerName: string,
         boundingBox: [number, number, number, number],
@@ -239,9 +240,9 @@ export class WMSClient extends EventDispatcher {
 
         // Build the URL
         const url = new URL(this.baseURL)
-        url.searchParams.append('SERVICE', this.service)     
+        url.searchParams.append('SERVICE', this.service)   
+        url.searchParams.append('VERSION', this.version)     
         url.searchParams.append('REQUEST', 'GetMap')   
-        url.searchParams.append('VERSION', this.version)   
         url.searchParams.append('BBOX', boundingBox.join(','))   
         url.searchParams.append('CRS', CRS)   
         url.searchParams.append('WIDTH', width.toFixed(0))   
@@ -267,6 +268,63 @@ export class WMSClient extends EventDispatcher {
         const blob = await response.blob();
         const blobURL = URL.createObjectURL(blob);
         return blobURL
+    }
+
+    // TODO allow multiple layers, and/or different map layer and query layer
+    async getFeatureInfo(
+        layerName: string,        
+        boundingBox: [number, number, number, number],
+        CRS: string,
+        width: number,
+        height: number,
+        i: number,
+        j: number
+    ) {
+        // https://bio.discomap.eea.europa.eu/arcgis/services/Ecosystem/Ecosystem_Map_service/MapServer/WMSServer?
+        // SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&
+        // BBOX=10.40313532502800342%2C44.41458669139024096%2C10.40324045901227379%2C44.41466178799623776&
+        // CRS=CRS%3A84&WIDTH=2&HEIGHT=2&LAYERS=2&STYLES=&FORMAT=image%2Fpng&QUERY_LAYERS=2&INFO_FORMAT=text%2Fhtml&I=0&J=1
+
+        // Check if layer exists
+        const layer = this.layers.find((l) => l.name == layerName)
+        if (!layer)
+            throw new Error('Layer ' + layerName + ' not found in service ' + this.title)
+
+        // Check if layer accepts this CRS
+        if (!(layer.CRS.includes(CRS)))
+            throw new Error('Layer ' + layerName + ' does not list CRS ' + CRS)
+        
+        // Check if bounding box is out of CRS bounds
+        // TODO write code here
+
+        // TODO check is image dimension is too big
+        // TODO check if resolution is out of bounds
+
+        // Build the URL
+        const url = new URL(this.baseURL)
+        url.searchParams.append('SERVICE', this.service)    
+        url.searchParams.append('VERSION', this.version)    
+        url.searchParams.append('REQUEST', 'GetFeatureInfo')   
+        url.searchParams.append('BBOX', boundingBox.join(','))   
+        url.searchParams.append('CRS', CRS)   
+        url.searchParams.append('WIDTH', width.toFixed(0))   
+        url.searchParams.append('HEIGHT', height.toFixed(0))   
+        url.searchParams.append('LAYERS', layerName)
+        // TODO get from Capabilities options for parameters below
+        url.searchParams.append('STYLES', '')
+        url.searchParams.append('FORMAT', 'image/png')
+        url.searchParams.append('QUERY_LAYERS', layerName)
+        url.searchParams.append('INFO_FORMAT', 'text/html')
+        url.searchParams.append('I', i.toFixed(0))
+        url.searchParams.append('J', j.toFixed(0))
+
+        // Fetch URL
+        const response = await fetch(
+            url
+        )
+       return response.text()
+
+       // TODO catch errors
     }
 
     
