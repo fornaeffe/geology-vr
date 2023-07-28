@@ -124,7 +124,7 @@ GOButton.addEventListener('click', (e) => {
     // const coordsUTM = proj4('WGS84', 'EPSG:32632', coords.reverse())
     const coordsUTM = proj4('WGS84', 'EPSG:7791', coords.reverse())
 
-    myGeoViewer.myTile.reset(coordsUTM[0], coordsUTM[1])
+    myGeoViewer.reset(coordsUTM[0], coordsUTM[1])
     
     // If all ok, close the dialog
     locationDialog.classList.add('hiddenmenu')

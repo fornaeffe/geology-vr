@@ -2,10 +2,12 @@ import { WMSClient } from "./WMSClient";
 
 const mapImg = document.createElement('img')
 // const client = new WMSClient('https://servizigis.regione.emilia-romagna.it/wms/geologia10k?request=GetCapabilities&service=WMS')
-const client = new WMSClient('https://bio.discomap.eea.europa.eu/arcgis/services/Ecosystem/Ecosystem_Map_service/MapServer/WMSServer', 'WMS')
+// const client = new WMSClient('https://bio.discomap.eea.europa.eu/arcgis/services/Ecosystem/Ecosystem_Map_service/MapServer/WMSServer')
 
-client.addEventListener('connected', () => {
-    client.getMap(
+const client = new WMSClient()
+
+client.connect('https://bio.discomap.eea.europa.eu/arcgis/services/Ecosystem/Ecosystem_Map_service/MapServer/WMSServer').then((service) => {
+    service.getMap(
         '2',
         [10.38208224, 44.39697159, 10.445793439, 44.433923159],
         'CRS:84',
@@ -14,7 +16,7 @@ client.addEventListener('connected', () => {
     ).then((mapURL) => {
         mapImg.src = mapURL
         document.body.appendChild(mapImg)
-        return client.getFeatureInfo(
+        return service.getFeatureInfo(
             '2',
             [10.403135325028, 44.41458669139024, 10.4032404590122, 44.41466178799623],
             'CRS:84',
@@ -35,6 +37,8 @@ client.addEventListener('connected', () => {
         }
     })
 })
+
+
 
 
 

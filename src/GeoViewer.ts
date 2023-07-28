@@ -4,6 +4,7 @@ import { HTMLMesh } from 'three/examples/jsm/interactive/HTMLMesh.js'
 import { Tile } from './Tile';
 import { VRFlyControls } from './VRFlyControls';
 import { DeviceOrientationControls } from './DeviceOrientationControls';
+import { WMSClient, WMSService } from './WMSClient';
 
 
 export type ViewMode = 'static' | 'device orientation' | 'VR'
@@ -31,6 +32,9 @@ export class GeoViewer {
     // GUI mesh
     guiDOMelement : HTMLElement
     guiMesh? : HTMLMesh
+
+    // WMS services
+    WMSservices : WMSService[] = []
 
     // Function (to be passed) that will be executed when a view mode change is triggered inside this class (and not by user input or UI logic)
     onAutomaticViewModeChange = (v : ViewMode) => {}
@@ -81,6 +85,7 @@ export class GeoViewer {
             this.changeViewMode('device orientation')
             this.onAutomaticViewModeChange('device orientation')
         }
+
 
         // VR controller event handlers
         this.myVRcontrols.controllers.forEach((c) => {
@@ -172,6 +177,16 @@ export class GeoViewer {
             this.onAutomaticViewModeChange('static')
         })
 
+        // Texture loading
+        const client = new WMSClient()
+        client.connect('https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb').then((service) => {
+            this.WMSservices.push(service)
+            this.myTile.applyTexture(service, 'Agea2020_RGB', false)
+        })
+        client.connect('https://servizigis.regione.emilia-romagna.it/wms/geologia10k').then((service) => {
+            this.WMSservices.push(service)
+        })
+
         // Start animation
         this.renderer.setAnimationLoop(() => this.render())
 
@@ -192,8 +207,31 @@ export class GeoViewer {
 
     // geo: true if we want geology map, false if we want orthophoto
     changeTexture(geo = !this.geo) {
+        const service = this.WMSservices.find((service) => service.baseURL == (geo ? 'https://servizigis.regione.emilia-romagna.it/wms/geologia10k' : 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb'))
+        
+        if (!service) {
+            console.warn('Change texture called with geo = ' + geo + ' before the service is available.')
+            return
+        }
+
+        const layerName = geo ? 'Unita_geologiche_10K' : 'Agea2020_RGB'
+        
+        this.myTile.applyTexture(service, layerName, geo)
+
         this.geo = geo
-        this.myTile.changeTexture(geo)
+    }
+
+    // Reset tile position
+    reset(x: number = this.myTile.x, y: number = this.myTile.y) {
+        this.myTile.x = x
+        this.myTile.y = y
+        this.myTile.loadDEM()
+
+        const service = this.WMSservices.find((service) => service.baseURL == 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb')
+
+        if (!service) return;
+        
+        this.myTile.applyTexture(service, 'Agea2020_RGB', false)
     }
 
     // Change the view mode (computer, mobile or VR)
