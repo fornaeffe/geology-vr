@@ -83,7 +83,8 @@ export class Tile {
 
 
     load() {
-        const CRS = 'EPSG:32632'; // Coordinate reference system
+        const CRS = 'EPSG:7791'
+        // const CRS = 'EPSG:32632'; // Coordinate reference system
 
 
         // Calculate bounding box
@@ -130,22 +131,39 @@ export class Tile {
             '&FORMAT_OPTIONS=dpi%3A96' +
             '&TRANSPARENT=TRUE';
 
+        // // Compose WMS request URL for geology
+        // const WMSurlGEO = 'https://servizigis.regione.emilia-romagna.it/wms/geologia10k?' +
+        //     'SERVICE=WMS&' +
+        //     'VERSION=1.3.0' +
+        //     '&REQUEST=GetMap' +
+        //     '&BBOX=' + encodeURIComponent(BBox.join(',')) +
+        //     '&CRS=' + encodeURIComponent(CRS) +
+        //     '&WIDTH=' + this.textureWidth() +
+        //     '&HEIGHT=' + this.textureHeight() +
+        //     '&LAYERS=Unita_geologiche_10K' +
+        //     '&STYLES=' +
+        //     '&FORMAT=image%2Fpng' +
+        //     '&DPI=96' +
+        //     '&MAP_RESOLUTION=96' +
+        //     '&FORMAT_OPTIONS=dpi%3A96' +
+        //     '&TRANSPARENT=TRUE';
+
         // Compose WMS request URL for geology
-        const WMSurlGEO = 'https://servizigis.regione.emilia-romagna.it/wms/geologia10k?' +
-            'SERVICE=WMS&' +
-            'VERSION=1.3.0' +
-            '&REQUEST=GetMap' +
-            '&BBOX=' + encodeURIComponent(BBox.join(',')) +
-            '&CRS=' + encodeURIComponent(CRS) +
-            '&WIDTH=' + this.textureWidth() +
-            '&HEIGHT=' + this.textureHeight() +
-            '&LAYERS=Unita_geologiche_10K' +
-            '&STYLES=' +
-            '&FORMAT=image%2Fpng' +
-            '&DPI=96' +
-            '&MAP_RESOLUTION=96' +
-            '&FORMAT_OPTIONS=dpi%3A96' +
-            '&TRANSPARENT=TRUE';
+        const WMSurlGEO = 'https://servizigis.regione.emilia-romagna.it/wms/suoli?' +
+        'SERVICE=WMS&' +
+        'VERSION=1.3.0' +
+        '&REQUEST=GetMap' +
+        '&BBOX=' + encodeURIComponent(BBox.join(',')) +
+        '&CRS=' + encodeURIComponent(CRS) +
+        '&WIDTH=' + this.textureWidth() +
+        '&HEIGHT=' + this.textureHeight() +
+        '&LAYERS=Carta_Suoli_50k' +
+        '&STYLES=' +
+        '&FORMAT=image%2Fpng' +
+        '&DPI=96' +
+        '&MAP_RESOLUTION=96' +
+        '&FORMAT_OPTIONS=dpi%3A96' +
+        '&TRANSPARENT=TRUE';
 
         // Load and apply DEM
         this.loadDEM(WCSurl);

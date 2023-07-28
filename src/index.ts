@@ -110,6 +110,7 @@ locationDialog.firstElementChild?.addEventListener('click', (e) => {
 
 // WGS 84 / UTM zone 32N projection definition for coordinates translation
 proj4.defs("EPSG:32632","+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs")
+proj4.defs("EPSG:7791","+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs");
 
 // Read coordinates and reload DEM and textures
 GOButton.addEventListener('click', (e) => {
@@ -120,7 +121,8 @@ GOButton.addEventListener('click', (e) => {
         return
     }
 
-    const coordsUTM = proj4('WGS84', 'EPSG:32632', coords.reverse())
+    // const coordsUTM = proj4('WGS84', 'EPSG:32632', coords.reverse())
+    const coordsUTM = proj4('WGS84', 'EPSG:7791', coords.reverse())
 
     myGeoViewer.myTile.reset(coordsUTM[0], coordsUTM[1])
     

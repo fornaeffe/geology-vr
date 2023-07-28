@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
-import { InteractiveGroup } from 'three/examples/jsm/interactive/InteractiveGroup.js'
 import { HTMLMesh } from 'three/examples/jsm/interactive/HTMLMesh.js'
 import { Tile } from './Tile';
 import { VRFlyControls } from './VRFlyControls';
@@ -134,11 +133,9 @@ export class GeoViewer {
 
                         const uv = intersection.uv
 
-                        if (intersection.object === this.guiMesh && uv) {
-                            this.guiMesh.dispatchEvent({type: 'click', data: new THREE.Vector2(uv.x, 1-uv.y)})
+                        if (uv) {
+                            intersection.object.dispatchEvent({type: 'click', data: new THREE.Vector2(uv.x, 1-uv.y)})
                         }
-
-                        // TODO insert code here
 
                 }
             })

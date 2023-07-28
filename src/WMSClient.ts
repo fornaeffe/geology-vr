@@ -1,3 +1,5 @@
+import { EventDispatcher } from "./EventDispatcher"
+
 class Layer {
     name: string
     title: string
@@ -20,7 +22,7 @@ class Layer {
     }
 }
 
-export class WMSClient {
+export class WMSClient extends EventDispatcher {
     baseURL: string
     service: 'WMS' | 'WCS'
     version: string
@@ -32,6 +34,7 @@ export class WMSClient {
         service?: 'WMS' | 'WCS',
         version?: string
     ) {
+        super()
         // Parse URL provided
         const urlParts = url.split("?")
         this.baseURL = urlParts[0]
@@ -205,9 +208,65 @@ export class WMSClient {
         console.log('Service: ' + this.title)
         console.dir(this.layers)
         
-        // TODO creare una proprietà contenenete i nomi dei layers, e se sono queryable
-        // TODO creare l'oggetto layer, contenente i CRS di ciascun layer e le relative BBox
+        // TODO get bounding box for each CRS
+        // TODO get max image dimension
+        // TODO max min resolution
+
+        this.dispatchEvent({type: 'connected', data: null})        
+    }
+
+    async getMap(
+        layerName: string,
+        boundingBox: [number, number, number, number],
+        CRS: string,
+        width: number,
+        height: number
+    ) {
+        // Check if layer exists
+        const layer = this.layers.find((l) => l.name == layerName)
+        if (!layer)
+            throw new Error('Layer ' + layerName + ' not found in service ' + this.title)
+
+        // Check if layer accepts this CRS
+        if (!(layer.CRS.includes(CRS)))
+            throw new Error('Layer ' + layerName + ' does not list CRS ' + CRS)
         
+        // Check if bounding box is out of CRS bounds
+        // TODO write code here
+
+        // TODO check is image dimension is too big
+        // TODO check if resolution is out of bounds
+
+        // Build the URL
+        const url = new URL(this.baseURL)
+        url.searchParams.append('SERVICE', this.service)     
+        url.searchParams.append('REQUEST', 'GetMap')   
+        url.searchParams.append('VERSION', this.version)   
+        url.searchParams.append('BBOX', boundingBox.join(','))   
+        url.searchParams.append('CRS', CRS)   
+        url.searchParams.append('WIDTH', width.toFixed(0))   
+        url.searchParams.append('HEIGHT', height.toFixed(0))   
+        url.searchParams.append('LAYERS', layerName)
+        // TODO get from Capabilities options for parameters below
+        url.searchParams.append('STYLES', '')
+        url.searchParams.append('FORMAT', 'image/png')
+        url.searchParams.append('DPI', '96')
+        url.searchParams.append('MAP_RESOLUTION', '96')
+        url.searchParams.append('FORMAT_OPTIONS', 'dpi:96')
+        url.searchParams.append('TRANSPARENT', 'TRUE')
+
+        // Fetch URL
+        const response = await fetch(
+            url,
+            {
+                cache: 'force-cache'
+            }
+        )
+        
+        // Return a local URL for the dowloaded image
+        const blob = await response.blob();
+        const blobURL = URL.createObjectURL(blob);
+        return blobURL
     }
 
     
