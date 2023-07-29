@@ -5,6 +5,9 @@ import { EventDispatcher } from './EventDispatcher';
 
 export class Tile extends EventDispatcher{
 
+    x_id: number
+    y_id: number
+
     x: number; // Easting of tile center
     y: number; // Northing of tile center
     width: number; // Tile width in m
@@ -28,17 +31,33 @@ export class Tile extends EventDispatcher{
     onDEMLoad = () => { };
 
     constructor(
-        CRS = 'EPSG:32632',
-        x = 612400,
-        y = 4919216,
-        width = 4000,
-        height = 3000,
-        vertexResolution = 10,
-        textureResolution = 2
+        { 
+            x_id = 0,
+            y_id = 0,
+            x = 612400, 
+            y = 4919216,
+            CRS = 'EPSG:32632', 
+            width = 4000, 
+            height = 3000, 
+            vertexResolution = 10, 
+            textureResolution = 2 
+        }: {  
+            x_id?: number
+            y_id?: number            
+            x?: number
+            y?: number
+            CRS?: string
+            width?: number
+            height?: number
+            vertexResolution?: number
+            textureResolution?: number
+        } = {}
     ) {
         super()
 
         this.CRS = CRS
+        this.x_id = x_id
+        this.y_id = y_id
         this.x = x;
         this.y = y;
         this.width = width;
@@ -57,6 +76,10 @@ export class Tile extends EventDispatcher{
 
         // Create tile mesh
         this.mesh = new THREE.Mesh(this.geometry, this.material);
+
+        // Move mesh to correct position
+        this.mesh.position.x = x_id * width
+        this.mesh.position.z = - y_id * height
 
         // Load DEM
         this.loadDEM()

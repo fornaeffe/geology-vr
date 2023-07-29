@@ -22,7 +22,7 @@ function safeGetInput(id : string) {
 
 
 // Initialize the viewer
-const myGeoViewer = new GeoViewer(safeGet('vr-gui'), safeGet('vr-info'))
+const myGeoViewer = new GeoViewer({ guiDOMelement: safeGet('vr-gui'), featureInfoDOMelement: safeGet('vr-info') })
 
 // VR GUI
 safeGet('vr-orthophoto').addEventListener('click', (e) => {
@@ -124,7 +124,7 @@ GOButton.addEventListener('click', (e) => {
     // const coordsUTM = proj4('WGS84', 'EPSG:32632', coords.reverse())
     const coordsUTM = proj4('WGS84', 'EPSG:7791', coords.reverse())
 
-    myGeoViewer.reset(coordsUTM[0], coordsUTM[1])
+    myGeoViewer.reset(coordsUTM)
     
     // If all ok, close the dialog
     locationDialog.classList.add('hiddenmenu')

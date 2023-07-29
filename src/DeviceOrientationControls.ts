@@ -12,6 +12,7 @@ export class DeviceOrientationControls {
     sensor?: AbsoluteOrientationSensor
 
     // A custom function that can be passed, and executed when the device first transmit data
+    // TODO use addEventListener
     onSensorDetected = () => {}
     
     constructor(camera: THREE.Camera) {

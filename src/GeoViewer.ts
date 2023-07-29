@@ -13,12 +13,20 @@ export type ViewMode = 'static' | 'device orientation' | 'VR'
 export class GeoViewer {
     viewMode : ViewMode
 
+    center : number[]
+    center_id = [0, 0]
+    CRS : string
+    tileSide : number
+    vertexResolution : number
+    textureResolution : number
+
     renderer : THREE.WebGLRenderer
     scene : THREE.Scene
     camera : THREE.PerspectiveCamera
     light : THREE.DirectionalLight // the Sun
     blight : THREE.DirectionalLight // red light from bottom, in case the user goes underground
-    myTile : Tile // model of the Earth surface
+    
+    tileSet : Tile[] = [] // Array of tiles
 
     myMapControls : MapControls
     myVRcontrols : VRFlyControls
@@ -31,6 +39,7 @@ export class GeoViewer {
     geo : boolean
 
     // GUI mesh
+    featureInfoDOMelement : HTMLElement
     guiDOMelement : HTMLElement
     guiMesh? : HTMLMesh
 
@@ -40,13 +49,36 @@ export class GeoViewer {
     // Function (to be passed) that will be executed when a view mode change is triggered inside this class (and not by user input or UI logic)
     onAutomaticViewModeChange = (v : ViewMode) => {}
 
+    // TODO pass parameters as oject
     constructor(
-            guiDOMelement : HTMLElement = document.createElement('div'),
-            featureInfoDOMelement : HTMLElement = document.createElement('div')
-        ) {
+        {
+            center = [612400, 4919216],
+            CRS = 'EPSG:32632',
+            tileSide = 2000,
+            vertexResolution = 10,
+            textureResolution = 2,
+            guiDOMelement = document.createElement('div'), 
+            featureInfoDOMelement = document.createElement('div') 
+        }: { 
+            center?: number[];
+            CRS?: string;
+            tileSide?: number;
+            vertexResolution?: number;
+            textureResolution?: number;
+            guiDOMelement?: HTMLElement; 
+            featureInfoDOMelement?: HTMLElement; 
+        } = {}
+    ) {
+        this.center = center
+        this.CRS = CRS
+        this.tileSide = tileSide
+        this.vertexResolution = vertexResolution
+        this.textureResolution = textureResolution
+        
         this.viewMode = 'static'
 
         this.guiDOMelement = guiDOMelement
+        this.featureInfoDOMelement = featureInfoDOMelement
 
         // Create the scene
         this.scene = new THREE.Scene()
@@ -65,11 +97,12 @@ export class GeoViewer {
         this.blight.position.set( 0, -1, 0 ).normalize()
         this.scene.add( this.blight );
 
-        // Create tile
-        this.myTile = new Tile()        
-        // When the DEM is loaded, resets camera position
-        this.myTile.onDEMLoad = () => this.resetCameraPosition()
-        this.scene.add(this.myTile.mesh)
+        // Create tiles
+        this.createTiles();
+
+        // When central tile DEM is loaded, resets camera position
+        const centralTile = this.tileSet.find((tile) => tile.x_id == 0 && tile.y_id == 0)
+        if (centralTile) centralTile.onDEMLoad = () => this.resetCameraPosition()
 
         // Create the renderer and enable XR
         this.renderer = new THREE.WebGLRenderer();
@@ -132,7 +165,12 @@ export class GeoViewer {
                         raycaster.ray.origin.setFromMatrixPosition(c.targetRaySpace.matrixWorld)
                         raycaster.ray.direction.set(0,0,-1).applyMatrix4( new THREE.Matrix4().identity().extractRotation(c.targetRaySpace.matrixWorld) )
 
-                        const intersections = raycaster.intersectObjects(this.guiMesh ? [this.myTile.mesh, this.guiMesh] : [this.myTile.mesh])
+                        const meshes : THREE.Mesh[] = this.getTileMeshes()
+                        
+                        if (this.guiMesh)
+                            meshes.push(this.guiMesh)
+
+                        const intersections = raycaster.intersectObjects(meshes)
 
                         if (intersections.length < 1)
                             return;
@@ -184,7 +222,7 @@ export class GeoViewer {
         const client = new WMSClient()
         client.connect('https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb').then((service) => {
             this.WMSservices.push(service)
-            this.myTile.applyTexture(service, 'Agea2020_RGB', false)
+            this.tileSet.forEach((tile) => tile.applyTexture(service, 'Agea2020_RGB', false))
         })
         client.connect('https://servizigis.regione.emilia-romagna.it/wms/geologia10k').then((service) => {
             this.WMSservices.push(service)
@@ -202,53 +240,134 @@ export class GeoViewer {
 
         this.addGui(this.guiDOMelement)
 
-        // Feature Info event listener
-        this.myTile.addEventListener('featureinfo', (e) => {
+        
+    }
 
+    private getTileMeshes(): THREE.Mesh<THREE.BufferGeometry<THREE.NormalBufferAttributes>, THREE.Material | THREE.Material[]>[] {
+        return this.tileSet.map((t) => t.mesh);
+    }
+
+    private createTiles() {
+        for (let i = this.center_id[0] - 1; i < this.center_id[0] + 2; i++) {
+            for (let j = this.center_id[1] - 1; j < this.center_id[1] + 2; j++) {
+                // check if tile exist
+                if (this.tileSet.some((tile) => tile.x_id == i && tile.y_id == j))
+                    continue
+
+                const tile = new Tile({
+                    x_id: i,
+                    y_id: j,
+                    x: this.center[0] + i * this.tileSide,
+                    y: this.center[1] + j * this.tileSide,
+                    CRS: this.CRS,
+                    width: this.tileSide,
+                    height: this.tileSide,
+                    vertexResolution: this.vertexResolution,
+                    textureResolution: this.textureResolution
+                });
+
+                this.scene.add(tile.mesh);
+                this.tileSet.push(tile);
+
+                // Feature Info event listener
+                tile.addEventListener('featureinfo', (e) => {
             
-            // Remove open GUI if one
-            this.removeGui()
-
-            // Clear previous feature info content
-            featureInfoDOMelement.innerHTML = ''
-
-            const geojson = e.data as FeatureCollection
-            
-            geojson.features.forEach((feature) => {
-                const featureDIV = document.createElement('div')
-                featureDIV.classList.add('feature')
-
-                const props = feature.properties
-
-                if (!props) return;
-
-                for (const [key, value] of Object.entries(props)) {
+                    // Remove open GUI if one
+                    this.removeGui()
+        
+                    // Clear previous feature info content
+                    this.featureInfoDOMelement.innerHTML = ''
+        
+                    const geojson = e.data as FeatureCollection
                     
-                    featureDIV.innerHTML += '<span class="featurepropname">' + key + ': </span>' + addNewlines(value)
-                }
-
-                featureInfoDOMelement.appendChild(featureDIV)
-
-                // TODO make this better (or, better, change VR GUI engine)
-                function addNewlines(str: string) {
-                    var result = '';
-                    while (str.length > 0) {
-                      result += str.substring(0, 80) + '<br />';
-                      str = str.substring(80);
-                    }
-                    return result;
-                  }
-            })
-            
-
-            // Show info GUI
-            this.addGui(featureInfoDOMelement)
-        })
+                    geojson.features.forEach((feature) => {
+                        const featureDIV = document.createElement('div')
+                        featureDIV.classList.add('feature')
+        
+                        const props = feature.properties
+        
+                        if (!props) return;
+        
+                        for (const [key, value] of Object.entries(props)) {
+                            
+                            featureDIV.innerHTML += '<span class="featurepropname">' + key + ': </span>' + addNewlines(value)
+                        }
+        
+                        this.featureInfoDOMelement.appendChild(featureDIV)
+        
+                        // TODO make this better (or, better, change VR GUI engine)
+                        function addNewlines(str: string) {
+                            var result = '';
+                            while (str.length > 0) {
+                              result += str.substring(0, 80) + '<br />';
+                              str = str.substring(80);
+                            }
+                            return result;
+                          }
+                    })
+                    
+        
+                    // Show info GUI
+                    this.addGui(this.featureInfoDOMelement)
+                })
+            }
+        }
     }
 
     render() {
+        if (this.viewMode == 'VR') {
+            this.checkTranslation();
+        }
+
         this.myVRcontrols.update()
         this.renderer.render( this.scene, this.camera )
+    }
+
+    // Check if VR camera is near limit of tileset, and in that case move the tileset
+    private checkTranslation() {
+
+        // Calculate needed translation
+        const xrCameraPosition = this.renderer.xr.getCamera().position
+        const translation = [
+            Math.trunc(xrCameraPosition.x / this.tileSide - this.center_id[0]),
+            Math.trunc(- xrCameraPosition.z / this.tileSide - this.center_id[1])
+        ];
+
+        // If no translation needed, do nothing
+        if (translation[0] == 0 && translation[1] == 0)
+            return;
+        
+        // Change center of tileset
+        this.center_id = [this.center_id[0] + translation[0], this.center_id[1] + translation[1]]
+
+        // Create new tiles
+        this.createTiles()
+
+        // Remove tiles far from camera
+        this.tileSet.forEach((tile) => {
+            if (
+                tile.x_id > this.center_id[0] + 1 ||
+                tile.x_id < this.center_id[0] - 1 ||
+                tile.y_id > this.center_id[1] + 1 ||
+                tile.y_id < this.center_id[1] - 1
+            ) {
+                this.scene.remove(tile.mesh)
+                tile.material.dispose()
+                tile.geometry.dispose()
+            }
+        })
+        this.tileSet = this.tileSet.filter((tile) => {
+            const trueOrFalse = !(tile.x_id > this.center_id[0] + 1 ||
+            tile.x_id < this.center_id[0] - 1 ||
+            tile.y_id > this.center_id[1] + 1 ||
+            tile.y_id < this.center_id[1] - 1)
+            
+            return trueOrFalse
+        })
+        
+        
+        // Update textures for all tiles
+        this.changeTexture(this.geo)
     }
 
     // geo: true if we want geology map, false if we want orthophoto
@@ -262,22 +381,38 @@ export class GeoViewer {
 
         const layerName = geo ? 'Unita_geologiche_10K' : 'Agea2020_RGB'
         
-        this.myTile.applyTexture(service, layerName, geo)
+        this.tileSet.forEach((tile) => tile.applyTexture(service, layerName, geo))
 
         this.geo = geo
     }
 
-    // Reset tile position
-    reset(x: number = this.myTile.x, y: number = this.myTile.y) {
-        this.myTile.x = x
-        this.myTile.y = y
-        this.myTile.loadDEM()
+    // Reset tiles
+    reset(center = this.center) {
+
+        // Remove previous tiles
+        this.tileSet.forEach((tile) => {
+            this.scene.remove(tile.mesh)
+            tile.material.dispose()
+            tile.geometry.dispose()
+        })
+        
+        // Update center of scene
+        this.center = center
+        this.center_id = [0, 0]
+
+        // Reset tileSet and create new tiles
+        this.tileSet = []
+        this.createTiles()
+
+        // When central tile DEM is loaded, resets camera position
+        const centralTile = this.tileSet.find((tile) => tile.x_id == 0 && tile.y_id == 0)
+        if (centralTile) centralTile.onDEMLoad = () => this.resetCameraPosition()
 
         const service = this.WMSservices.find((service) => service.baseURL == 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb')
 
         if (!service) return;
         
-        this.myTile.applyTexture(service, 'Agea2020_RGB', false)
+        this.tileSet.forEach((tile) => tile.applyTexture(service, 'Agea2020_RGB', false))
     }
 
     // Change the view mode (computer, mobile or VR)
@@ -306,14 +441,14 @@ export class GeoViewer {
         // Find plane center height
         const myRaycaster = new THREE.Raycaster()
         myRaycaster.set(new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0))
-        const intersections = myRaycaster.intersectObject(this.myTile.mesh)
+        const intersections = myRaycaster.intersectObjects(this.getTileMeshes())
     
         if (intersections.length < 1)
             return;
         
         // static mode: camera far above the map, looking down
         // mobile or VR mode: camera near the surface, direction controlled by the device
-        const y = intersections[0].point.y + (this.viewMode == 'static' ? this.myTile.width / 2 : 5)
+        const y = intersections[0].point.y + (this.viewMode == 'static' ? this.tileSide / 2 : 5)
     
         if (this.viewMode == 'VR') {
             // Move the plane below the observer
