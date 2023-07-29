@@ -87,8 +87,8 @@ export class Tile extends EventDispatcher{
                 3,
                 1,
                 1
-            ).then((responseHTML) => {
-                this.dispatchEvent({type: 'featureinfo', data: responseHTML})
+            ).then((featureinfo) => {
+                this.dispatchEvent({type: 'featureinfo', data: featureinfo})
             })
         } )
     }

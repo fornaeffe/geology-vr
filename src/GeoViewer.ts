@@ -5,6 +5,7 @@ import { Tile } from './Tile';
 import { VRFlyControls } from './VRFlyControls';
 import { DeviceOrientationControls } from './DeviceOrientationControls';
 import { WMSClient, WMSService } from './WMSClient';
+import { FeatureCollection, GeoJsonObject } from 'geojson';
 
 
 export type ViewMode = 'static' | 'device orientation' | 'VR'
@@ -203,23 +204,42 @@ export class GeoViewer {
 
         // Feature Info event listener
         this.myTile.addEventListener('featureinfo', (e) => {
+
+            
             // Remove open GUI if one
             this.removeGui()
 
             // Clear previous feature info content
             featureInfoDOMelement.innerHTML = ''
 
-            // Parse html from event
-            const doc = new DOMParser().parseFromString(e.data, 'text/html')
-            // Add feature info to info GUI
-            const children = doc.children
-            for (let i = 0; i < children.length; i++) {
-                const item = children.item(i)
-                if (!item)
-                    continue;
-                
-                featureInfoDOMelement.append(item)
-            }
+            const geojson = e.data as FeatureCollection
+            
+            geojson.features.forEach((feature) => {
+                const featureDIV = document.createElement('div')
+                featureDIV.classList.add('feature')
+
+                const props = feature.properties
+
+                if (!props) return;
+
+                for (const [key, value] of Object.entries(props)) {
+                    
+                    featureDIV.innerHTML += '<span class="featurepropname">' + key + ': </span>' + addNewlines(value)
+                }
+
+                featureInfoDOMelement.appendChild(featureDIV)
+
+                // TODO make this better (or, better, change VR GUI engine)
+                function addNewlines(str: string) {
+                    var result = '';
+                    while (str.length > 0) {
+                      result += str.substring(0, 80) + '<br />';
+                      str = str.substring(80);
+                    }
+                    return result;
+                  }
+            })
+            
 
             // Show info GUI
             this.addGui(featureInfoDOMelement)
@@ -332,7 +352,8 @@ export class GeoViewer {
         // this.guiMesh.position.copy(c0.position)
         // this.guiMesh.quaternion.copy(c0.quaternion)
         this.guiMesh.translateX(0.2)
-        this.guiMesh.rotateX(- Math.PI / 2)
+        this.guiMesh.translateZ(-0.4)
+        this.guiMesh.rotateX(- Math.PI / 2 * 0.7)
         c0.add(this.guiMesh)
 
     }

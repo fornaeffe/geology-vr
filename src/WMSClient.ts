@@ -145,13 +145,14 @@ export class WMSService {
         url.searchParams.append('STYLES', '')
         url.searchParams.append('FORMAT', 'image/png')
         url.searchParams.append('QUERY_LAYERS', layerName)
-        url.searchParams.append('INFO_FORMAT', 'text/html')
+        url.searchParams.append('INFO_FORMAT', 'application/geojson')
         url.searchParams.append('I', i.toFixed(0))
         url.searchParams.append('J', j.toFixed(0))
 
         // Fetch URL
         const response = await fetch(url)
-        return response.text()
+        // return response.text()
+        return response.json() as Promise<GeoJSON.GeoJsonObject>
 
         // TODO catch errors
     }
@@ -223,7 +224,6 @@ export class WMSClient {
             )
 
             if (!nameXPresult.stringValue){
-                console.log('Layer without name')
                 continue
             }
 
