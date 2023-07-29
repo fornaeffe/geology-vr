@@ -22,7 +22,7 @@ function safeGetInput(id : string) {
 
 
 // Initialize the viewer
-const myGeoViewer = new GeoViewer(safeGet('vr-gui'))
+const myGeoViewer = new GeoViewer(safeGet('vr-gui'), safeGet('vr-info'))
 
 // VR GUI
 safeGet('vr-orthophoto').addEventListener('click', (e) => {

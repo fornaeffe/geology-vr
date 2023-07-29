@@ -40,7 +40,8 @@ export class GeoViewer {
     onAutomaticViewModeChange = (v : ViewMode) => {}
 
     constructor(
-            guiDOMelement : HTMLElement = document.createElement('div')
+            guiDOMelement : HTMLElement = document.createElement('div'),
+            featureInfoDOMelement : HTMLElement = document.createElement('div')
         ) {
         this.viewMode = 'static'
 
@@ -88,6 +89,7 @@ export class GeoViewer {
 
 
         // VR controller event handlers
+        // TODO reorganize this section
         this.myVRcontrols.controllers.forEach((c) => {
 
             const lineGeometry = new THREE.BufferGeometry()
@@ -198,6 +200,30 @@ export class GeoViewer {
         this.geo = false
 
         this.addGui(this.guiDOMelement)
+
+        // Feature Info event listener
+        this.myTile.addEventListener('featureinfo', (e) => {
+            // Remove open GUI if one
+            this.removeGui()
+
+            // Clear previous feature info content
+            featureInfoDOMelement.innerHTML = ''
+
+            // Parse html from event
+            const doc = new DOMParser().parseFromString(e.data, 'text/html')
+            // Add feature info to info GUI
+            const children = doc.children
+            for (let i = 0; i < children.length; i++) {
+                const item = children.item(i)
+                if (!item)
+                    continue;
+                
+                featureInfoDOMelement.append(item)
+            }
+
+            // Show info GUI
+            this.addGui(featureInfoDOMelement)
+        })
     }
 
     render() {

@@ -121,6 +121,10 @@ export class WMSService {
         if (!(layer.CRS.includes(CRS)))
             throw new Error('Layer ' + layerName + ' does not list CRS ' + CRS)
         
+        // Check if layer is queryable
+        if (!layer.queryable) {
+            throw new Error('Layer ' + layerName + ' is not queryable')
+        }
         // Check if bounding box is out of CRS bounds
         // TODO write code here
 

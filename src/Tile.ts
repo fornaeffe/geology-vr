@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { fromUrl } from "geotiff";
 import { WMSService } from './WMSClient';
+import { EventDispatcher } from './EventDispatcher';
 
-export class Tile {
+export class Tile extends EventDispatcher{
 
     x: number; // Easting of tile center
     y: number; // Northing of tile center
@@ -16,6 +17,8 @@ export class Tile {
     mesh: THREE.Mesh;
 
     serviceMap: Map<WMSService, Map<string, string>> = new Map()
+    service: WMSService | undefined = undefined
+    layerName: string | undefined = undefined
 
     OPurl = ''; // Orthophoto blob URL
     GEOurl = ''; // Geology map blob URL
@@ -33,6 +36,8 @@ export class Tile {
         vertexResolution = 10,
         textureResolution = 2
     ) {
+        super()
+
         this.CRS = CRS
         this.x = x;
         this.y = y;
@@ -55,6 +60,37 @@ export class Tile {
 
         // Load DEM
         this.loadDEM()
+
+        // GetFeatureInfo listener
+        this.mesh.addEventListener('click', (e) => {
+            if (!this.service || !this.layerName || !e.data.x || !e.data.y ) {
+                console.warn('Click on mesh without all necessary variables set')
+                return
+            }
+
+            // Ask a getFeatureInfo request on a mock map request of 
+            // 3x3 pixel, centered on the requested point
+            const crsX = e.data.x * this.width + this.boundingBox()[0]
+            const crsY = this.boundingBox()[3] - e.data.y * this.height
+            const newBoundingBox = [
+                crsX - 1.5 * this.textureResolution,
+                crsY - 1.5 * this.textureResolution,
+                crsX + 1.5 * this.textureResolution,
+                crsY + 1.5 * this.textureResolution
+            ]
+
+            this.service.getFeatureInfo(
+                this.layerName,
+                newBoundingBox,
+                this.CRS,
+                3,
+                3,
+                1,
+                1
+            ).then((responseHTML) => {
+                this.dispatchEvent({type: 'featureinfo', data: responseHTML})
+            })
+        } )
     }
 
     // Number of plane segments along width
@@ -201,6 +237,10 @@ export class Tile {
         // If needed, apply flatShading
         this.mesh.material.flatShading = flatShading
         this.mesh.material.needsUpdate = true
+
+        // Save applied layer
+        this.service = service
+        this.layerName = layerName
     }
 
 }

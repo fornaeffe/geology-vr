@@ -82,9 +82,16 @@
 				
 			}
 
-			#vr-gui {
+			.vr-gui {
 				position: fixed;
 				visibility: hidden;
+			}
+
+			#vr-info {
+				background-color: #eeeeeedd;
+				border: 1px solid #404040dd;
+				border-radius: 16px;
+				padding: 16px;
 			}
 
 			#vr-intro {
@@ -108,7 +115,10 @@
 		</style>
 	</head>
 	<body>
-		<div id="vr-gui">
+		<div id="vr-info" class="vr-gui">
+
+		</div>
+		<div id="vr-gui" class="vr-gui">
 			<div id="vr-intro">
 				Thumbsticks: fly<br />
 				Select: click on buttons<br />
