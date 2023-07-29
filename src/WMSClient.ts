@@ -1,3 +1,4 @@
+
 class Layer {
     name: string
     title: string
@@ -20,75 +21,155 @@ class Layer {
     }
 }
 
-export class WMSClient {
+export class WMSService {
     baseURL: string
-    service: 'WMS' | 'WCS'
     version: string
-    title?: string
-    layers: Layer[] = []
+    title: string
+    layers: Layer[]
+    // TODO abstract
+    // TODO online resource
+    // TODO contact information
+    // TODO layer limit
+    // TODO maxwidth
+    // TODO maxheight
 
     constructor(
-        url: string,
-        service?: 'WMS' | 'WCS',
-        version?: string
+        baseURL: string,
+        version: string,
+        title: string,
+        layers: Layer[]
     ) {
-        // Parse URL provided
-        const urlParts = url.split("?")
-        this.baseURL = urlParts[0]
-        
-        // If there are parameters, get info from parameters
-        if (urlParts.length > 1) {
-            const urlParams = new URLSearchParams(urlParts[1])
-            const urlService = urlParams.get('SERVICE') || urlParams.get('service')
-            const urlVersion = urlParams.get('VERSION') || urlParams.get('version')
-
-            if (urlService) {
-                if (service && urlService && urlService != service)
-                    console.warn('Service specification differs. Used the one from URL')
-                
-                if (urlService == 'WMS' || urlService == 'WCS')
-                    service = urlService
-            }
-
-            if (urlVersion) {
-                if (version && urlVersion && urlVersion != version)
-                    console.warn('Version specification differs. Used the on efrom URL')
-                
-                version = urlVersion
-            }
-
-        }
-        
-        // You should state if you want WMS or WCS
-        if (!service)
-            throw new Error('Service unspecified and not retrievable from URL')
-
-        this.service = service
-
-        // Default version.
-        // TODO Should we move this as a default parameter of constructor?
-        if (!version)
-            version = '1.3.0'
-
+        this.baseURL = baseURL
         this.version = version
-
-        // Make a GetCapabilities request
-        this.getCapabilities()
+        this.title = title
+        this.layers = layers
     }
 
-    async getCapabilities() {
+    // TODO allow multiple layers
+    async getMap(
+        layerName: string,
+        boundingBox: number[],
+        CRS: string,
+        width: number,
+        height: number
+    ) {
+        // Check if layer exists
+        const layer = this.layers.find((l) => l.name == layerName)
+        if (!layer)
+            throw new Error('Layer ' + layerName + ' not found in service ' + this.title)
+
+        // Check if layer accepts this CRS
+        if (!(layer.CRS.includes(CRS)))
+            throw new Error('Layer ' + layerName + ' does not list CRS ' + CRS)
+        
+        // Check if bounding box is out of CRS bounds
+        // TODO write code here
+
+        // TODO check is image dimension is too big
+        // TODO check if resolution is out of bounds
+
         // Build the URL
         const url = new URL(this.baseURL)
-        url.searchParams.append('SERVICE', this.service)     
-        url.searchParams.append('REQUEST', 'GetCapabilities')
+        url.searchParams.append('SERVICE', 'WMS')  
+        url.searchParams.append('VERSION', this.version)     
+        url.searchParams.append('REQUEST', 'GetMap')   
+        url.searchParams.append('BBOX', boundingBox.join(','))   
+        url.searchParams.append('CRS', CRS)   
+        url.searchParams.append('WIDTH', width.toFixed(0))   
+        url.searchParams.append('HEIGHT', height.toFixed(0))   
+        url.searchParams.append('LAYERS', layerName)
+        // TODO get from Capabilities options for parameters below
+        url.searchParams.append('STYLES', '')
+        url.searchParams.append('FORMAT', 'image/png')
+        url.searchParams.append('DPI', '96')
+        url.searchParams.append('MAP_RESOLUTION', '96')
+        url.searchParams.append('FORMAT_OPTIONS', 'dpi:96')
+        url.searchParams.append('TRANSPARENT', 'TRUE')
 
-        // Fetch URL and parse response into a DOM
+        // Fetch URL
         const response = await fetch(
             url,
             {
                 cache: 'force-cache'
             }
         )
+        
+        // Return a local URL for the dowloaded image
+        const blob = await response.blob();
+        const blobURL = URL.createObjectURL(blob);
+        return blobURL
+
+        // TODO catch errors
+    }
+
+    // TODO allow multiple layers, and/or different map layer and query layer
+    async getFeatureInfo(
+        layerName: string,        
+        boundingBox: number[],
+        CRS: string,
+        width: number,
+        height: number,
+        i: number,
+        j: number
+    ) {
+        // Check if layer exists
+        const layer = this.layers.find((l) => l.name == layerName)
+        if (!layer)
+            throw new Error('Layer ' + layerName + ' not found in service ' + this.title)
+
+        // Check if layer accepts this CRS
+        if (!(layer.CRS.includes(CRS)))
+            throw new Error('Layer ' + layerName + ' does not list CRS ' + CRS)
+        
+        // Check if layer is queryable
+        if (!layer.queryable) {
+            throw new Error('Layer ' + layerName + ' is not queryable')
+        }
+        // Check if bounding box is out of CRS bounds
+        // TODO write code here
+
+        // TODO check is image dimension is too big
+        // TODO check if resolution is out of bounds
+
+        // Build the URL
+        const url = new URL(this.baseURL)
+        url.searchParams.append('SERVICE', 'WMS')    
+        url.searchParams.append('VERSION', this.version)    
+        url.searchParams.append('REQUEST', 'GetFeatureInfo')   
+        url.searchParams.append('BBOX', boundingBox.join(','))   
+        url.searchParams.append('CRS', CRS)   
+        url.searchParams.append('WIDTH', width.toFixed(0))   
+        url.searchParams.append('HEIGHT', height.toFixed(0))   
+        url.searchParams.append('LAYERS', layerName)
+        // TODO get from Capabilities options for parameters below
+        url.searchParams.append('STYLES', '')
+        url.searchParams.append('FORMAT', 'image/png')
+        url.searchParams.append('QUERY_LAYERS', layerName)
+        url.searchParams.append('INFO_FORMAT', 'application/geojson')
+        url.searchParams.append('I', i.toFixed(0))
+        url.searchParams.append('J', j.toFixed(0))
+
+        // Fetch URL
+        const response = await fetch(url)
+        // return response.text()
+        return response.json() as Promise<GeoJSON.GeoJsonObject>
+
+        // TODO catch errors
+    }
+}
+
+export class WMSClient {
+
+    async connect(url: string) {
+        // Parse URL provided
+        const baseURL = url.split("?")[0]        
+
+        const getCapabilitiesURL = new URL(baseURL)
+        getCapabilitiesURL.searchParams.append('SERVICE', 'WMS')     
+        getCapabilitiesURL.searchParams.append('REQUEST', 'GetCapabilities')
+
+        // Fetch URL and parse response into a DOM
+        const response = await fetch(getCapabilitiesURL)
         const xml = await response.text()
         const dom = new DOMParser().parseFromString(xml, 'text/xml')
 
@@ -113,7 +194,7 @@ export class WMSClient {
             XPathResult.STRING_TYPE,
             null
         )
-        this.title = titleXPresult.stringValue
+        const title = titleXPresult.stringValue
         
         
         // Find all layers
@@ -126,6 +207,7 @@ export class WMSClient {
         )
         
         // Get layer info
+        const layers : Layer[] = []
         for (let i = 0; i < layersXPresult.snapshotLength; i++) {
             const item = layersXPresult.snapshotItem(i)
 
@@ -142,7 +224,6 @@ export class WMSClient {
             )
 
             if (!nameXPresult.stringValue){
-                console.log('Layer without name')
                 continue
             }
 
@@ -199,17 +280,21 @@ export class WMSClient {
             }
             
             // Create new layer
-            this.layers.push(new Layer(name, title, queryable, abstract, crsArray))
+            layers.push(new Layer(name, title, queryable, abstract, crsArray))
         }
 
-        console.log('Service: ' + this.title)
-        console.dir(this.layers)
         
-        // TODO creare una proprietà contenenete i nomi dei layers, e se sono queryable
-        // TODO creare l'oggetto layer, contenente i CRS di ciascun layer e le relative BBox
-        
-    }
+        // TODO get bounding box for each CRS
+        // TODO get max image dimension
+        // TODO max min resolution
 
+        return new WMSService(
+            baseURL,
+            '1.3.0', // TODO get this value from Capabilities
+            title,
+            layers
+        )       
+    }
     
 }
 

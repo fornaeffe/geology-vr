@@ -1,17 +1,27 @@
 import * as THREE from 'three';
 import { fromUrl } from "geotiff";
+import { WMSService } from './WMSClient';
+import { EventDispatcher } from './EventDispatcher';
 
-export class Tile {
+export class Tile extends EventDispatcher{
+
+    x_id: number
+    y_id: number
+
     x: number; // Easting of tile center
     y: number; // Northing of tile center
     width: number; // Tile width in m
     height: number; // Tile height in m
     vertexResolution: number; // Distance from vertices in m
     textureResolution: number; // Texture pixel width in m
-    // CRS: string;
+    CRS: string;
     geometry: THREE.PlaneGeometry;
     material: THREE.MeshLambertMaterial;
     mesh: THREE.Mesh;
+
+    serviceMap: Map<WMSService, Map<string, string>> = new Map()
+    service: WMSService | undefined = undefined
+    layerName: string | undefined = undefined
 
     OPurl = ''; // Orthophoto blob URL
     GEOurl = ''; // Geology map blob URL
@@ -21,13 +31,33 @@ export class Tile {
     onDEMLoad = () => { };
 
     constructor(
-        x = 612400,
-        y = 4919216,
-        width = 4000,
-        height = 3000,
-        vertexResolution = 10,
-        textureResolution = 2
+        { 
+            x_id = 0,
+            y_id = 0,
+            x = 612400, 
+            y = 4919216,
+            CRS = 'EPSG:32632', 
+            width = 4000, 
+            height = 3000, 
+            vertexResolution = 10, 
+            textureResolution = 2 
+        }: {  
+            x_id?: number
+            y_id?: number            
+            x?: number
+            y?: number
+            CRS?: string
+            width?: number
+            height?: number
+            vertexResolution?: number
+            textureResolution?: number
+        } = {}
     ) {
+        super()
+
+        this.CRS = CRS
+        this.x_id = x_id
+        this.y_id = y_id
         this.x = x;
         this.y = y;
         this.width = width;
@@ -47,7 +77,43 @@ export class Tile {
         // Create tile mesh
         this.mesh = new THREE.Mesh(this.geometry, this.material);
 
-        this.load();
+        // Move mesh to correct position
+        this.mesh.position.x = x_id * width
+        this.mesh.position.z = - y_id * height
+
+        // Load DEM
+        this.loadDEM()
+
+        // GetFeatureInfo listener
+        this.mesh.addEventListener('click', (e) => {
+            if (!this.service || !this.layerName || !e.data.x || !e.data.y ) {
+                console.warn('Click on mesh without all necessary variables set')
+                return
+            }
+
+            // Ask a getFeatureInfo request on a mock map request of 
+            // 3x3 pixel, centered on the requested point
+            const crsX = e.data.x * this.width + this.boundingBox()[0]
+            const crsY = this.boundingBox()[3] - e.data.y * this.height
+            const newBoundingBox = [
+                crsX - 1.5 * this.textureResolution,
+                crsY - 1.5 * this.textureResolution,
+                crsX + 1.5 * this.textureResolution,
+                crsY + 1.5 * this.textureResolution
+            ]
+
+            this.service.getFeatureInfo(
+                this.layerName,
+                newBoundingBox,
+                this.CRS,
+                3,
+                3,
+                1,
+                1
+            ).then((featureinfo) => {
+                this.dispatchEvent({type: 'featureinfo', data: featureinfo})
+            })
+        } )
     }
 
     // Number of plane segments along width
@@ -80,19 +146,20 @@ export class Tile {
         return Math.floor(this.height / this.textureResolution);
     }
 
-
-
-    load() {
-        const CRS = 'EPSG:32632'; // Coordinate reference system
-
-
-        // Calculate bounding box
-        const BBox = [
+    // Bounding box: [min x, min y, max x, max y] coordinates (in Tile's CRS)
+    boundingBox() {
+        return [
             this.x - this.width / 2,
             this.y - this.height / 2,
             this.x + this.width / 2,
             this.y + this.height / 2
         ];
+    }
+
+    async loadDEM() {
+        // TODO: cache!
+
+        // Calculate bounding box for DEM
         const BBoxDEM = [
             this.x - (this.width + this.vertexResolution) / 2,
             this.y - (this.height + this.vertexResolution) / 2,
@@ -100,6 +167,7 @@ export class Tile {
             this.y + (this.height + this.vertexResolution) / 2
         ];
 
+        // TODO create a client for WCS also
         // Compose WCS request URL for DEM
         const WCSurl = 'https://tinitaly.pi.ingv.it/TINItaly_1_1/wcs?' +
             'SERVICE=WCS' +
@@ -108,65 +176,10 @@ export class Tile {
             '&FORMAT=GeoTIFF' +
             '&COVERAGE=TINItaly_1_1:tinitaly_dem' +
             '&BBOX=' + BBoxDEM.join(',') +
-            '&CRS=' + CRS +
-            '&RESPONSE_CRS=' + CRS +
+            '&CRS=' + this.CRS +
+            '&RESPONSE_CRS=' + this.CRS +
             '&WIDTH=' + this.widthPoints() +
             '&HEIGHT=' + this.heightPoints();
-
-        // Compose WMS request URL for orthophoto
-        const WMSurl = 'https://servizigis.regione.emilia-romagna.it/wms/agea2020_rgb?' +
-            'SERVICE=WMS&' +
-            'VERSION=1.3.0' +
-            '&REQUEST=GetMap' +
-            '&BBOX=' + encodeURIComponent(BBox.join(',')) +
-            '&CRS=' + encodeURIComponent(CRS) +
-            '&WIDTH=' + this.textureWidth() +
-            '&HEIGHT=' + this.textureHeight() +
-            '&LAYERS=Agea2020_RGB' +
-            '&STYLES=' +
-            '&FORMAT=image%2Fpng' +
-            '&DPI=96' +
-            '&MAP_RESOLUTION=96' +
-            '&FORMAT_OPTIONS=dpi%3A96' +
-            '&TRANSPARENT=TRUE';
-
-        // Compose WMS request URL for geology
-        const WMSurlGEO = 'https://servizigis.regione.emilia-romagna.it/wms/geologia10k?' +
-            'SERVICE=WMS&' +
-            'VERSION=1.3.0' +
-            '&REQUEST=GetMap' +
-            '&BBOX=' + encodeURIComponent(BBox.join(',')) +
-            '&CRS=' + encodeURIComponent(CRS) +
-            '&WIDTH=' + this.textureWidth() +
-            '&HEIGHT=' + this.textureHeight() +
-            '&LAYERS=Unita_geologiche_10K' +
-            '&STYLES=' +
-            '&FORMAT=image%2Fpng' +
-            '&DPI=96' +
-            '&MAP_RESOLUTION=96' +
-            '&FORMAT_OPTIONS=dpi%3A96' +
-            '&TRANSPARENT=TRUE';
-
-        // Load and apply DEM
-        this.loadDEM(WCSurl);
-
-        // Load and apply ortophoto, and store its blob URL
-        this.loadWMS(WMSurl).then((url) => {
-            this.applyTexture(url);
-            this.OPurl = url;
-        });
-
-        // Load geology map, and store its blob URL
-        this.loadWMS(WMSurlGEO).then((url) => {
-            this.GEOurl = url;
-        });
-
-        // TODO catch errors
-        // TODO loading indicator
-    }
-
-    async loadDEM(WCSurl: string) {
-        // TODO: cache!
 
         // Fetch WCS GeoTIFF and read the raster data
         const myGeoTIFF = await fromUrl(WCSurl, { allowFullFile: true });
@@ -200,53 +213,57 @@ export class Tile {
         // TODO loading indicator
     }
 
-    // Function that loads png from WMS
-    async loadWMS(url: string): Promise<string> {
-        // Fetch WMS for orthophoto
-        const myWMSResponse = await fetch(
-            url,
-            {
-                cache: 'force-cache'
+
+    // Load and apply texture
+    async applyTexture(service: WMSService, layerName: string, flatShading = true) {
+
+        let url : string | undefined = undefined
+
+        // If there is a previously stored map for the same service and layer, retrieve its URL
+        const layerMap = this.serviceMap.get(service)
+        if (layerMap) {
+            const previousUrl = layerMap.get(layerName)
+            if (previousUrl) url = previousUrl
+        }
+
+        // If there isn't a stored map, request a new one from the WMS service
+        if (!url) {
+            url = await service.getMap(
+                layerName,
+                this.boundingBox(),
+                this.CRS,
+                this.textureWidth(),
+                this.textureHeight()
+            )
+
+            // Store the map URL for future uses
+            if (layerMap) {
+                layerMap.set(layerName, url)
+            } else {
+                const newLayerMap = new Map()
+                newLayerMap.set(layerName, url)
+                this.serviceMap.set(
+                    service,
+                    newLayerMap
+                )
             }
-        )
-        const myBlob = await myWMSResponse.blob();
-        const myBlobURL = URL.createObjectURL(myBlob);
-        return myBlobURL;
-        // Load texture
-        // TODO catch errors
-        // TODO loading indicator
-    }
+        }
 
-    // Function that apply texture to plane
-    applyTexture(url: string) {
-        const myTexture = new THREE.TextureLoader().load(url); // TODO callbacks (https://threejs.org/docs/#api/en/loaders/TextureLoader)
-
+        
         if (!(this.mesh.material instanceof THREE.MeshLambertMaterial))
-            throw new Error('Mesh material is not MeshLambertMaterial');
+            throw new Error('Mesh material is not MeshLambertMaterial')
 
         // Apply texture
-        this.mesh.material.map = myTexture;
-        this.mesh.material.needsUpdate = true;
-    }
+        const myTexture = new THREE.TextureLoader().load(url); // TODO callbacks (https://threejs.org/docs/#api/en/loaders/TextureLoader)
+        this.mesh.material.map = myTexture
 
-    // Switch texture
-    // geo = true --> geology map
-    // geo = false --> orthophoto
-    changeTexture(geo: boolean) {
-        this.applyTexture(geo ? this.GEOurl : this.OPurl);
+        // If needed, apply flatShading
+        this.mesh.material.flatShading = flatShading
+        this.mesh.material.needsUpdate = true
 
-        if (!(this.mesh.material instanceof THREE.MeshLambertMaterial))
-            throw new Error('Mesh material is not MeshLambertMaterial');
-
-        this.mesh.material.flatShading = geo;
-        this.mesh.material.needsUpdate = true;
-    }
-
-    // Reload DEM and textures with new coordinates
-    reset(x = this.x, y = this.y) {
-        this.x = x;
-        this.y = y;
-        this.load();
+        // Save applied layer
+        this.service = service
+        this.layerName = layerName
     }
 
 }

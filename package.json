@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/geojson": "^7946.0.10",
     "@types/proj4": "^2.5.2",
     "@types/three": "^0.152.1",
     "@types/w3c-generic-sensor": "^1.0.6",

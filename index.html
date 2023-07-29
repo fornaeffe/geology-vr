@@ -82,9 +82,22 @@
 				
 			}
 
-			#vr-gui {
+			.vr-gui {
 				position: fixed;
 				visibility: hidden;
+			}
+
+			.feature {
+				background-color: #000000aa;
+				border: 1px solid #000000;
+				color: #cccccc;
+				border-radius: 16px;
+				padding: 16px;
+			}
+
+			.featurepropname {
+				font-weight: bold;
+				color: white;
 			}
 
 			#vr-intro {
@@ -104,14 +117,24 @@
 				padding: 16px;
 			}
 
+			#debug-window {
+				background-color: #ffffff99;
+				position: absolute;
+				top: 0px;
+				margin: auto;
+			}
+
 			
 		</style>
 	</head>
 	<body>
-		<div id="vr-gui">
+		<div id="vr-info" class="vr-gui">
+
+		</div>
+		<div id="vr-gui" class="vr-gui">
 			<div id="vr-intro">
 				Thumbsticks: fly<br />
-				Select: click on buttons<br />
+				Select: click / geological info<br />
 				Squeeze: change map texture<br />
 				X button: open/close dialog<br />
 				<br />
@@ -160,6 +183,10 @@
 				<span class="material-icons-outlined md-48 clickable" id="mobile-button" aria-label="Device orientation controls">smartphone</span>
 			</div>
 		</div>
+
+		<!-- <div id="debug-window">
+
+		</div> -->
 
 
 		<script src="script/bundle.js"></script>
