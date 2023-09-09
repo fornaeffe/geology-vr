@@ -50,6 +50,7 @@ export class DeviceOrientationControls {
                 // Retrieve device absolute rotation quaternion
                 const q1 = new THREE.Quaternion().fromArray(this.sensor.quaternion)
 
+		// Ispired by https://gist.github.com/kopiro/86aac4eb19ac29ae62c950ad2106a10e
                 // Apply rotation around x axis (camera points toward the back of the phone, not up)
                 // and then update camera quaternion
                 const q2 = new THREE.Quaternion().setFromAxisAngle( new THREE.Vector3(1, 0, 0), -Math.PI/2 )
